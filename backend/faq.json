@@ -1,0 +1,50 @@
+[
+  {
+    "question": "What services does Nevastech offer?",
+    "answer": "Nevastech specializes in Microsoft ERP solutions, including implementation, migration, integration, support, and training for Microsoft Dynamics 365 Business Central, Dynamics 365 Finance & Operations, and Dynamics 365 Sales/CRM."
+  },
+  {
+    "question": "What is Microsoft Dynamics 365 Business Central?",
+    "answer": "Microsoft Dynamics 365 Business Central is an all-in-one ERP solution designed for small to medium-sized businesses. It covers financial management, supply chain, sales, project management, and more — all within the Microsoft ecosystem."
+  },
+  {
+    "question": "What is the difference between Business Central and Finance & Operations?",
+    "answer": "Business Central is ideal for small to mid-sized businesses with simpler ERP needs. Finance & Operations (F&O) is designed for large enterprises with complex, multi-entity, multi-country requirements. Nevastech can help you choose the right fit for your organization."
+  },
+  {
+    "question": "How long does a Dynamics 365 implementation take?",
+    "answer": "Implementation timelines vary based on complexity. A standard Business Central implementation typically takes 8-16 weeks, while Finance & Operations can take 4-12 months depending on scope, customizations, and integrations. Nevastech provides detailed project plans during the discovery phase."
+  },
+  {
+    "question": "Does Nevastech offer free consultations?",
+    "answer": "Yes! Nevastech offers a free initial consultation to understand your business needs, evaluate your current systems, and recommend the best Dynamics 365 solution. Contact us at info@nevastech.com to schedule yours."
+  },
+  {
+    "question": "Can Nevastech help migrate from our current ERP system?",
+    "answer": "Absolutely. Nevastech has extensive experience migrating businesses from legacy ERP systems (SAP, Oracle, Tally, QuickBooks, etc.) to Microsoft Dynamics 365. We handle data migration, process mapping, and user training to ensure a smooth transition."
+  },
+  {
+    "question": "What is Dynamics 365 Sales (CRM)?",
+    "answer": "Dynamics 365 Sales is Microsoft's CRM solution that helps businesses manage customer relationships, track sales pipelines, automate marketing, and improve customer engagement. It integrates seamlessly with other Dynamics 365 and Microsoft 365 products."
+  },
+  {
+    "question": "Does Nevastech provide post-implementation support?",
+    "answer": "Yes, Nevastech offers comprehensive post-implementation support packages including bug fixes, performance optimization, user training, system updates, and ongoing customization to ensure your Dynamics 365 solution continues to meet your evolving business needs."
+  },
+  {
+    "question": "How can I contact Nevastech?",
+    "answer": "You can reach Nevastech via email at info@nevastech.com or call us at +91 0123456789. Our business hours are Monday to Saturday, 9 AM to 6 PM IST. You can also visit our website at nevastech.com."
+  },
+  {
+    "question": "What is an ERP system?",
+    "answer": "ERP (Enterprise Resource Planning) is a type of software that organizations use to manage day-to-day business activities such as accounting, procurement, project management, supply chain operations, and more. It integrates all these processes into a single unified system for better visibility and efficiency."
+  },
+  {
+    "question": "What industries does Nevastech serve?",
+    "answer": "Nevastech serves a wide range of industries including manufacturing, retail, distribution, professional services, healthcare, and more. Our team customizes Dynamics 365 solutions to fit the unique requirements of each industry."
+  },
+  {
+    "question": "What are the licensing costs for Dynamics 365?",
+    "answer": "Dynamics 365 licensing varies by product and user type. Business Central starts from approximately $70/user/month for Essentials. For detailed pricing tailored to your team size and needs, contact Nevastech for a personalized quote."
+  }
+]
