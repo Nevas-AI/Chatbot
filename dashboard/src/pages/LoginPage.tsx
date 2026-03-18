@@ -16,7 +16,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
     try {
       // For simple internal use, we check against a fixed password or send to backend
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/dashboard/login`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/dashboard/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),
@@ -57,7 +57,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       }}>
         <h1 style={{ color: 'var(--color-text)', marginBottom: '8px', fontSize: '24px' }}>Dashboard Login</h1>
         <p style={{ color: 'var(--color-text-muted)', marginBottom: '32px', fontSize: '14px' }}>Internal Access Only</p>
-        
+
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
             <input

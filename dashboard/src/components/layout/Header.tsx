@@ -1,7 +1,7 @@
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { Wifi, WifiOff } from 'lucide-react';
 
-const WS_URL = `${(import.meta.env.VITE_API_URL || 'http://localhost:8000').replace('http', 'ws')}/api/dashboard/ws/live`;
+const WS_URL = `${(import.meta.env.VITE_API_URL || `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`).replace('http', 'ws')}/api/dashboard/ws/live`;
 
 export default function Header() {
   const { connected } = useWebSocket(WS_URL);

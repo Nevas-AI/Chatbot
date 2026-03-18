@@ -5,7 +5,7 @@ import { Radio, ArrowLeft, Clock } from 'lucide-react';
 import { timeAgo, clampText, statusColor, formatDate } from '../lib/utils';
 import { useClient } from '../contexts/ClientContext';
 
-const WS_URL = `${(import.meta.env.VITE_API_URL || 'http://localhost:8000').replace('http', 'ws')}/api/dashboard/ws/live`;
+const WS_URL = `${(import.meta.env.VITE_API_URL || `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`).replace('http', 'ws')}/api/dashboard/ws/live`;
 
 export default function LiveChatPage() {
   const { activeClient } = useClient();

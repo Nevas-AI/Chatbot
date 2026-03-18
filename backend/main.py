@@ -91,7 +91,7 @@ def _build_client_config(client: Client) -> dict:
         "collection_name": client.collection_name or client.slug,
         "persist_dir": os.getenv("CHROMA_PERSIST_DIR", "./chroma_db"),
         "gemini_api_key": os.getenv("GEMINI_API_KEY", ""),
-        "llm_model": os.getenv("LLM_MODEL", "gemini-2.0-flash"),
+        "llm_model": os.getenv("LLM_MODEL", "gemini-2.5-flash"),
         "embedding_model": os.getenv("EMBEDDING_MODEL", "gemini-embedding-001"),
         "escalation_keywords": client.escalation_keywords,
         "primary_color": client.primary_color,
