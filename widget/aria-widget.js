@@ -16,16 +16,21 @@
   "use strict";
 
   // ─── Configuration ─────────────────────────────────────
+  var userConfig = window.NevaConfig || window.AriaConfig || window.ARIA_CONFIG || window.nevaConfig || {};
+  // Support both "serverUrl" and "apiUrl" keys
+  if (userConfig.serverUrl && !userConfig.apiUrl) {
+    userConfig.apiUrl = userConfig.serverUrl;
+  }
   const CONFIG = Object.assign(
     {
-      apiUrl: "http://localhost:8000",
+      apiUrl: "",
       clientId: "default",
       botName: "Neva",
       primaryColor: "#6366F1",
       companyName: "Nevastech",
       position: "bottom-right",
     },
-    window.NevaConfig || window.AriaConfig || {}
+    userConfig
   );
 
   // Resolved client_id (UUID) from server — set after loadClientConfig
