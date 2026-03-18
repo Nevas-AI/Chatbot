@@ -229,7 +229,7 @@
         bottom: 104px;
         right: 28px;
         width: 400px;
-        height: 580px;
+        height: min(580px, calc(100vh - 120px));
         background: var(--aria-bg);
         border-radius: var(--aria-radius);
         box-shadow: var(--aria-shadow);
@@ -728,7 +728,8 @@
         </button>
       </div>
       <div id="aria-messages"></div>
-      <button id="aria-human-btn" aria-label="Chat with Human Support">👤 Chat with Human Support</button>
+      
+      
       <div id="aria-input-bar">
         <textarea id="aria-message-input" placeholder="Type your message..." rows="1"></textarea>
         <button id="aria-send-btn" aria-label="Send message">
