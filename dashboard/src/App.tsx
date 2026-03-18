@@ -8,6 +8,7 @@ import EscalationsPage from './pages/EscalationsPage';
 import UsersPage from './pages/UsersPage';
 import SettingsPage from './pages/SettingsPage';
 import ClientsPage from './pages/ClientsPage';
+import LeadsPage from './pages/LeadsPage';
 import LoginPage from './pages/LoginPage';
 import { ClientProvider } from './contexts/ClientContext';
 
@@ -27,6 +28,7 @@ function AppRoutes({ onLogout }: { onLogout: () => void }) {
           <Route path="/escalations" element={<EscalationsPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/clients" element={<ClientsPage />} />
+          <Route path="/leads" element={<LeadsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Routes>

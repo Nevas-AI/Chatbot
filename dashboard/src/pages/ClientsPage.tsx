@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { createClient, updateClient, deleteClient, Client, ClientCreateInput } from '../lib/api';
+import { createClient, updateClient, deleteClient, testClientEmail, Client, ClientCreateInput } from '../lib/api';
 import { useClient } from '../contexts/ClientContext';
-import { Plus, Edit2, Trash2, Globe, Mail, Phone, Clock, Palette, Save, X } from 'lucide-react';
+import { Plus, Edit2, Trash2, Globe, Mail, Phone, Clock, Palette, Save, X, Send, Lock, ToggleLeft, ToggleRight } from 'lucide-react';
 
 const emptyForm: ClientCreateInput = {
   name: '',
@@ -16,6 +16,9 @@ const emptyForm: ClientCreateInput = {
   business_hours: 'Mon-Fri 9AM-6PM IST',
   website_url: '',
   collection_name: '',
+  lead_email: '',
+  lead_email_password: '',
+  email_enabled: false,
 };
 
 export default function ClientsPage() {
@@ -25,6 +28,8 @@ export default function ClientsPage() {
   const [form, setForm] = useState<ClientCreateInput>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [testingEmail, setTestingEmail] = useState(false);
+  const [emailTestResult, setEmailTestResult] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
 
   const handleChange = (key: string, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -91,8 +96,12 @@ export default function ClientsPage() {
       business_hours: client.business_hours,
       website_url: client.website_url || '',
       collection_name: client.collection_name,
+      lead_email: client.lead_email || '',
+      lead_email_password: '',
+      email_enabled: client.email_enabled,
     });
     setShowForm(true);
+    setEmailTestResult(null);
   };
 
   const cancelForm = () => {
@@ -100,6 +109,21 @@ export default function ClientsPage() {
     setEditingId(null);
     setForm(emptyForm);
     setError('');
+    setEmailTestResult(null);
+  };
+
+  const handleTestEmail = async () => {
+    if (!editingId) return;
+    setTestingEmail(true);
+    setEmailTestResult(null);
+    try {
+      const res = await testClientEmail(editingId);
+      setEmailTestResult({ type: 'success', msg: res.message });
+    } catch (err: any) {
+      setEmailTestResult({ type: 'error', msg: err.message || 'Test failed' });
+    } finally {
+      setTestingEmail(false);
+    }
   };
 
   return (
@@ -219,6 +243,51 @@ export default function ClientsPage() {
               <input className="input" value={form.logo_url} onChange={(e) => handleChange('logo_url', e.target.value)} placeholder="https://example.com/logo.png" />
             </div>
           </div>
+
+          {/* Email Settings Section */}
+          <div style={{ marginTop: 24, borderTop: '1px solid var(--color-border)', paddingTop: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <Mail size={18} style={{ color: '#6366f1' }} />
+              <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Lead Email Notifications</h3>
+              <button
+                type="button"
+                onClick={() => setForm(prev => ({ ...prev, email_enabled: !prev.email_enabled }))}
+                style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', background: 'none', border: 'none', color: form.email_enabled ? '#22c55e' : 'var(--color-text-muted)', fontSize: '0.85rem', fontWeight: 500 }}
+              >
+                {form.email_enabled ? <ToggleRight size={22} /> : <ToggleLeft size={22} />}
+                {form.email_enabled ? 'Enabled' : 'Disabled'}
+              </button>
+            </div>
+            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 16 }}>
+              When enabled, captured leads will be automatically emailed to the configured Gmail address.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                  <Mail size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Gmail Address
+                </label>
+                <input className="input" value={form.lead_email || ''} onChange={(e) => handleChange('lead_email', e.target.value)} placeholder="your-email@gmail.com" />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                  <Lock size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Gmail App Password
+                </label>
+                <input className="input" type="password" value={form.lead_email_password || ''} onChange={(e) => handleChange('lead_email_password', e.target.value)} placeholder={editingId ? '••••••••••••••••' : 'Enter app password'} />
+              </div>
+            </div>
+            {editingId && (
+              <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <button className="btn" onClick={handleTestEmail} disabled={testingEmail} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Send size={14} /> {testingEmail ? 'Sending...' : 'Send Test Email'}
+                </button>
+                {emailTestResult && (
+                  <span style={{ fontSize: '0.8rem', color: emailTestResult.type === 'success' ? '#22c55e' : '#ef4444' }}>
+                    {emailTestResult.msg}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
           <div style={{ display: 'flex', gap: 12, marginTop: 20, justifyContent: 'flex-end' }}>
             <button className="btn" onClick={cancelForm}>
               <X size={16} /> Cancel
@@ -260,6 +329,13 @@ export default function ClientsPage() {
               <div>📞 {client.support_phone}</div>
               <div>🕐 {client.business_hours}</div>
               {client.website_url && <div>🌐 {client.website_url}</div>}
+              <div style={{ gridColumn: '1 / -1', marginTop: 4 }}>
+                {client.email_enabled ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#22c55e', fontSize: '0.75rem' }}>✉️ Lead emails → {client.lead_email}</span>
+                ) : (
+                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>✉️ Lead emails disabled</span>
+                )}
+              </div>
             </div>
             <div style={{ marginTop: 12, fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
               Widget embed: <code style={{ background: 'var(--color-bg-secondary)', padding: '2px 6px', borderRadius: 4 }}>clientId: "{client.slug}"</code>

@@ -2,8 +2,8 @@
 rag.py - RAG Pipeline for Neva Chatbot
 ========================================
 Handles document ingestion, embedding, retrieval, and LLM chat
-using Ollama for both embeddings and LLM, with a custom numpy-based
-vector store that persists to disk as JSON.
+using Google Gemini API for both embeddings and LLM, with a custom
+numpy-based vector store that persists to disk as JSON.
 
 Supports multi-client: each RAGPipeline instance receives explicit
 config so multiple clients can have isolated knowledge bases.
@@ -16,7 +16,7 @@ import hashlib
 from typing import List, Dict, Optional, Generator
 
 import numpy as np
-import ollama
+import google.generativeai as genai
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -180,9 +180,25 @@ could I grab a few quick details?
 
 Our team will get back to you shortly!"
 
-If the user provides their details, confirm receipt with:
-"Thanks, [Name]! A {company_name} consultant will reach out to you at [email] soon.
-In the meantime, feel free to ask me anything else! 😊"
+If the user is not willing to share certain information, respect their choice
+and proceed with whatever details they are comfortable providing.
+
+CRITICAL: When the user provides their details, you MUST include these hidden
+markers IN ADDITION to your natural response. Place them at the very end of
+your message, each on its own line:
+[LEAD_NAME: <the name they provided>]
+[LEAD_EMAIL: <the email they provided>]
+[LEAD_PHONE: <the phone they provided>]
+[LEAD_COMPANY: <the company they provided>]
+
+Only include markers for fields the user actually provided. Do NOT make up values.
+These markers help our system log the lead — they will be hidden from the user.
+
+Your visible response should be natural, e.g.:
+"Thanks, John! A {company_name} consultant will reach out to you at john@example.com soon.
+In the meantime, feel free to ask me anything else! 😊
+[LEAD_NAME: John]
+[LEAD_EMAIL: john@example.com]"
 
 ## CLOSING THE CONVERSATION (HIGH PRIORITY)
 - If the user explicitly indicates they have no more questions or want to end the chat (e.g., "no", "none", "that's it", "thanks, I'm done"), DO NOT provide a standard response. You MUST respond ONLY with this exact phrase:
@@ -218,13 +234,13 @@ If it is clearly out of scope, use the decline message above.
             config: Optional dict with client-specific settings. Keys:
                 - bot_name, company_name, support_email, support_phone, business_hours
                 - collection_name, persist_dir
-                - ollama_base_url, llm_model, embedding_model
+                - gemini_api_key, llm_model, embedding_model
                 If None, falls back to environment variables (legacy single-tenant mode).
         """
         config = config or {}
-        self.ollama_base_url = config.get("ollama_base_url", os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"))
-        self.llm_model = config.get("llm_model", os.getenv("LLM_MODEL", "llama3.1"))
-        self.embedding_model = config.get("embedding_model", os.getenv("EMBEDDING_MODEL", "nomic-embed-text"))
+        self.gemini_api_key = config.get("gemini_api_key", os.getenv("GEMINI_API_KEY", ""))
+        self.llm_model = config.get("llm_model", os.getenv("LLM_MODEL", "gemini-2.0-flash"))
+        self.embedding_model = config.get("embedding_model", os.getenv("EMBEDDING_MODEL", "text-embedding-004"))
         self.persist_dir = config.get("persist_dir", os.getenv("CHROMA_PERSIST_DIR", "./chroma_db"))
         self.collection_name = config.get("collection_name", os.getenv("CHROMA_COLLECTION_NAME", "aria_knowledge"))
         self.company_name = config.get("company_name", os.getenv("COMPANY_NAME", "Your Company"))
@@ -250,12 +266,19 @@ If it is clearly out of scope, use the decline message above.
             business_hours=self.business_hours,
         )
 
-        logger.info(f"RAG pipeline initialized for '{self.collection_name}'")
+        # Configure Gemini API
+        genai.configure(api_key=self.gemini_api_key)
+
+        logger.info(f"RAG pipeline initialized for '{self.collection_name}' with Gemini AI")
 
     def _get_embedding(self, text: str) -> List[float]:
-        """Get embedding vector for a text using Ollama."""
-        response = ollama.embed(model=self.embedding_model, input=text)
-        return response["embeddings"][0]
+        """Get embedding vector for a text using Gemini Embedding API."""
+        result = genai.embed_content(
+            model=f"models/{self.embedding_model}",
+            content=text,
+            task_type="retrieval_document",
+        )
+        return result["embedding"]
 
     def _chunk_text(self, text: str) -> List[str]:
         """Split text into overlapping chunks."""
@@ -459,11 +482,19 @@ If it is clearly out of scope, use the decline message above.
         messages = self._build_messages(user_message, context, chat_history)
 
         try:
-            response = ollama.chat(
-                model=self.llm_model,
-                messages=messages,
+            model = genai.GenerativeModel(
+                model_name=self.llm_model,
+                system_instruction=self.system_prompt,
             )
-            return response["message"]["content"]
+            # Convert messages to Gemini format (skip system message)
+            gemini_history = []
+            for msg in messages[1:-1]:  # skip system and last user message
+                role = "user" if msg["role"] == "user" else "model"
+                gemini_history.append({"role": role, "parts": [msg["content"]]})
+
+            chat = model.start_chat(history=gemini_history)
+            response = chat.send_message(messages[-1]["content"])
+            return response.text
         except Exception as e:
             logger.error(f"Error generating chat response: {str(e)}")
             return (
@@ -483,15 +514,21 @@ If it is clearly out of scope, use the decline message above.
         messages = self._build_messages(user_message, context, chat_history)
 
         try:
-            stream = ollama.chat(
-                model=self.llm_model,
-                messages=messages,
-                stream=True,
+            model = genai.GenerativeModel(
+                model_name=self.llm_model,
+                system_instruction=self.system_prompt,
             )
-            for chunk in stream:
-                token = chunk["message"]["content"]
-                if token:
-                    yield token
+            # Convert messages to Gemini format (skip system message)
+            gemini_history = []
+            for msg in messages[1:-1]:  # skip system and last user message
+                role = "user" if msg["role"] == "user" else "model"
+                gemini_history.append({"role": role, "parts": [msg["content"]]})
+
+            chat = model.start_chat(history=gemini_history)
+            response = chat.send_message(messages[-1]["content"], stream=True)
+            for chunk in response:
+                if chunk.text:
+                    yield chunk.text
         except Exception as e:
             logger.error(f"Error streaming chat response: {str(e)}")
             yield (
@@ -506,7 +543,7 @@ If it is clearly out of scope, use the decline message above.
         context: str,
         chat_history: Optional[List[Dict]] = None,
     ) -> List[Dict]:
-        """Build the messages array for the Ollama API call."""
+        """Build the messages array for the Gemini API call."""
         messages = [
             {"role": "system", "content": self.system_prompt},
         ]

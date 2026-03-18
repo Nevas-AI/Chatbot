@@ -23,7 +23,8 @@ from sqlalchemy.orm import selectinload
 from pydantic import BaseModel, Field
 
 from database import get_db
-from models import Client, Conversation, Message, EscalationEvent, DashboardSettings, ChatUser
+from models import Client, Conversation, Message, EscalationEvent, DashboardSettings, ChatUser, Lead
+from lead_capture import encrypt_password, decrypt_password, send_test_email
 
 logger = logging.getLogger(__name__)
 
@@ -161,6 +162,8 @@ class ClientOut(BaseModel):
     website_url: Optional[str] = None
     collection_name: str
     escalation_keywords: Optional[dict] = None
+    lead_email: Optional[str] = None
+    email_enabled: bool = False
     is_active: bool
     created_at: datetime
 
@@ -182,6 +185,9 @@ class ClientCreateIn(BaseModel):
     website_url: Optional[str] = None
     collection_name: Optional[str] = None
     escalation_keywords: Optional[dict] = None
+    lead_email: Optional[str] = None
+    lead_email_password: Optional[str] = None
+    email_enabled: bool = False
 
 
 class ClientUpdateIn(BaseModel):
@@ -198,6 +204,9 @@ class ClientUpdateIn(BaseModel):
     collection_name: Optional[str] = None
     escalation_keywords: Optional[dict] = None
     is_active: Optional[bool] = None
+    lead_email: Optional[str] = None
+    lead_email_password: Optional[str] = None
+    email_enabled: Optional[bool] = None
 
 
 # ─────────────────────────────────────────────
@@ -220,6 +229,29 @@ async def dashboard_login(req: LoginRequest):
 # Client CRUD
 # ─────────────────────────────────────────────
 
+def _client_to_out(c: Client) -> ClientOut:
+    """Helper to convert a Client ORM object to ClientOut schema."""
+    return ClientOut(
+        id=str(c.id),
+        name=c.name,
+        slug=c.slug,
+        bot_name=c.bot_name,
+        primary_color=c.primary_color,
+        welcome_msg=c.welcome_msg,
+        logo_url=c.logo_url,
+        company_name=c.company_name,
+        support_email=c.support_email,
+        support_phone=c.support_phone,
+        business_hours=c.business_hours,
+        website_url=c.website_url,
+        collection_name=c.collection_name,
+        escalation_keywords=c.escalation_keywords,
+        lead_email=c.lead_email,
+        email_enabled=c.email_enabled,
+        is_active=c.is_active,
+        created_at=c.created_at,
+    )
+
 @router.get("/clients", response_model=List[ClientOut])
 async def list_clients(
     include_inactive: bool = Query(False),
@@ -233,27 +265,7 @@ async def list_clients(
     result = await db.execute(query)
     clients = result.scalars().all()
 
-    return [
-        ClientOut(
-            id=str(c.id),
-            name=c.name,
-            slug=c.slug,
-            bot_name=c.bot_name,
-            primary_color=c.primary_color,
-            welcome_msg=c.welcome_msg,
-            logo_url=c.logo_url,
-            company_name=c.company_name,
-            support_email=c.support_email,
-            support_phone=c.support_phone,
-            business_hours=c.business_hours,
-            website_url=c.website_url,
-            collection_name=c.collection_name,
-            escalation_keywords=c.escalation_keywords,
-            is_active=c.is_active,
-            created_at=c.created_at,
-        )
-        for c in clients
-    ]
+    return [_client_to_out(c) for c in clients]
 
 
 @router.post("/clients", response_model=ClientOut, status_code=201)
@@ -269,6 +281,11 @@ async def create_client(
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail=f"Slug '{body.slug}' already exists")
 
+    # Encrypt email password if provided
+    encrypted_pwd = None
+    if body.lead_email_password:
+        encrypted_pwd = encrypt_password(body.lead_email_password)
+
     client = Client(
         name=body.name,
         slug=body.slug,
@@ -283,6 +300,9 @@ async def create_client(
         website_url=body.website_url,
         collection_name=body.collection_name or body.slug,
         escalation_keywords=body.escalation_keywords,
+        lead_email=body.lead_email,
+        lead_email_password=encrypted_pwd,
+        email_enabled=body.email_enabled,
     )
     db.add(client)
     await db.flush()
@@ -300,24 +320,7 @@ async def create_client(
     except Exception as e:
         logger.warning(f"Could not auto-init pipeline for new client: {e}")
 
-    return ClientOut(
-        id=str(client.id),
-        name=client.name,
-        slug=client.slug,
-        bot_name=client.bot_name,
-        primary_color=client.primary_color,
-        welcome_msg=client.welcome_msg,
-        logo_url=client.logo_url,
-        company_name=client.company_name,
-        support_email=client.support_email,
-        support_phone=client.support_phone,
-        business_hours=client.business_hours,
-        website_url=client.website_url,
-        collection_name=client.collection_name,
-        escalation_keywords=client.escalation_keywords,
-        is_active=client.is_active,
-        created_at=client.created_at,
-    )
+    return _client_to_out(client)
 
 
 @router.get("/clients/{client_id}", response_model=ClientOut)
@@ -330,24 +333,7 @@ async def get_client(client_id: UUID, db: AsyncSession = Depends(get_db)):
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
 
-    return ClientOut(
-        id=str(client.id),
-        name=client.name,
-        slug=client.slug,
-        bot_name=client.bot_name,
-        primary_color=client.primary_color,
-        welcome_msg=client.welcome_msg,
-        logo_url=client.logo_url,
-        company_name=client.company_name,
-        support_email=client.support_email,
-        support_phone=client.support_phone,
-        business_hours=client.business_hours,
-        website_url=client.website_url,
-        collection_name=client.collection_name,
-        escalation_keywords=client.escalation_keywords,
-        is_active=client.is_active,
-        created_at=client.created_at,
-    )
+    return _client_to_out(client)
 
 
 @router.put("/clients/{client_id}", response_model=ClientOut)
@@ -364,8 +350,13 @@ async def update_client(
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
 
-    # Apply updates
+    # Apply updates — encrypt password if provided
     update_data = body.model_dump(exclude_unset=True)
+    if "lead_email_password" in update_data and update_data["lead_email_password"]:
+        update_data["lead_email_password"] = encrypt_password(update_data["lead_email_password"])
+    elif "lead_email_password" in update_data and not update_data["lead_email_password"]:
+        # If empty string, keep existing password
+        del update_data["lead_email_password"]
     for field, value in update_data.items():
         setattr(client, field, value)
 
@@ -384,24 +375,7 @@ async def update_client(
     except Exception as e:
         logger.warning(f"Could not reinit pipeline for client: {e}")
 
-    return ClientOut(
-        id=str(client.id),
-        name=client.name,
-        slug=client.slug,
-        bot_name=client.bot_name,
-        primary_color=client.primary_color,
-        welcome_msg=client.welcome_msg,
-        logo_url=client.logo_url,
-        company_name=client.company_name,
-        support_email=client.support_email,
-        support_phone=client.support_phone,
-        business_hours=client.business_hours,
-        website_url=client.website_url,
-        collection_name=client.collection_name,
-        escalation_keywords=client.escalation_keywords,
-        is_active=client.is_active,
-        created_at=client.created_at,
-    )
+    return _client_to_out(client)
 
 
 @router.delete("/clients/{client_id}")
@@ -907,3 +881,103 @@ async def update_user_tags(
     user.tags = body.tags
     await db.flush()
     return {"status": "updated", "tags": body.tags}
+
+
+# ─────────────────────────────────────────────
+# Leads
+# ─────────────────────────────────────────────
+
+class LeadOut(BaseModel):
+    id: str
+    client_id: str
+    conversation_id: Optional[str] = None
+    name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    company: Optional[str] = None
+    email_sent: bool
+    email_error: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+@router.get("/leads", response_model=List[LeadOut])
+async def list_leads(
+    client_id: Optional[str] = Query(None),
+    email_sent: Optional[bool] = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    """List captured leads with optional filters."""
+    query = select(Lead).order_by(desc(Lead.created_at))
+
+    conditions = []
+    if client_id:
+        try:
+            conditions.append(Lead.client_id == UUID(client_id))
+        except ValueError:
+            pass
+    if email_sent is not None:
+        conditions.append(Lead.email_sent == email_sent)
+    if conditions:
+        query = query.where(and_(*conditions))
+
+    offset = (page - 1) * page_size
+    query = query.offset(offset).limit(page_size)
+
+    result = await db.execute(query)
+    leads = result.scalars().all()
+
+    return [
+        LeadOut(
+            id=str(l.id),
+            client_id=str(l.client_id),
+            conversation_id=str(l.conversation_id) if l.conversation_id else None,
+            name=l.name,
+            email=l.email,
+            phone=l.phone,
+            company=l.company,
+            email_sent=l.email_sent,
+            email_error=l.email_error,
+            created_at=l.created_at,
+        )
+        for l in leads
+    ]
+
+
+@router.post("/clients/{client_id}/test-email")
+async def test_client_email(client_id: UUID, db: AsyncSession = Depends(get_db)):
+    """Send a test email to verify a client's Gmail SMTP configuration."""
+    result = await db.execute(select(Client).where(Client.id == client_id))
+    client = result.scalar_one_or_none()
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    if not client.lead_email or not client.lead_email_password:
+        raise HTTPException(
+            status_code=400,
+            detail="Email address and app password must be configured first."
+        )
+
+    try:
+        decrypted_pwd = decrypt_password(client.lead_email_password)
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Failed to decrypt stored password. Please re-enter your app password."
+        )
+
+    success, error = send_test_email(
+        sender_email=client.lead_email,
+        sender_password=decrypted_pwd,
+        company_name=client.company_name,
+    )
+
+    if success:
+        return {"status": "success", "message": "Test email sent successfully!"}
+    else:
+        raise HTTPException(status_code=400, detail=error or "Failed to send test email")
+

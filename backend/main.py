@@ -36,7 +36,13 @@ from escalation import EscalationHandler
 
 # Dashboard / DB imports
 from database import init_db, async_session
-from models import Client, Conversation, Message, EscalationEvent, ChatUser
+from models import Client, Conversation, Message, EscalationEvent, ChatUser, Lead
+from lead_capture import (
+    extract_lead_from_conversation,
+    send_lead_email,
+    decrypt_password,
+    LEAD_MARKER_PATTERN,
+)
 from dashboard_routes import router as dashboard_router, broadcast
 
 # Load environment variables
@@ -84,13 +90,17 @@ def _build_client_config(client: Client) -> dict:
         "website_url": client.website_url,
         "collection_name": client.collection_name or client.slug,
         "persist_dir": os.getenv("CHROMA_PERSIST_DIR", "./chroma_db"),
-        "ollama_base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
-        "llm_model": os.getenv("LLM_MODEL", "llama3.1"),
-        "embedding_model": os.getenv("EMBEDDING_MODEL", "nomic-embed-text"),
+        "gemini_api_key": os.getenv("GEMINI_API_KEY", ""),
+        "llm_model": os.getenv("LLM_MODEL", "gemini-2.0-flash"),
+        "embedding_model": os.getenv("EMBEDDING_MODEL", "text-embedding-004"),
         "escalation_keywords": client.escalation_keywords,
         "primary_color": client.primary_color,
         "welcome_msg": client.welcome_msg,
         "logo_url": client.logo_url,
+        # Email / Lead config
+        "lead_email": client.lead_email,
+        "lead_email_password": client.lead_email_password,
+        "email_enabled": client.email_enabled,
     }
 
 
@@ -654,9 +664,117 @@ async def close_conversation(session_id: str) -> None:
         logger.error(f"Failed to close conversation: {e}")
 
 
-# ─────────────────────────────────────────────
-# Widget config endpoint (public, no auth)
-# ─────────────────────────────────────────────
+async def _save_and_email_lead(
+    lead_data,
+    session_id: str,
+    client_id: str,
+    config: dict,
+) -> None:
+    """Save a captured lead to the DB and optionally send an email notification."""
+    try:
+        async with async_session() as db:
+            # Find the conversation
+            result = await db.execute(
+                select(Conversation).where(Conversation.session_id == session_id)
+            )
+            conversation = result.scalar_one_or_none()
+
+            resolved_client_id = None
+            try:
+                resolved_client_id = uuid.UUID(client_id)
+            except ValueError:
+                pass
+
+            # Check for duplicate: same client + email or phone in last 24 hours
+            if lead_data.email or lead_data.phone:
+                from sqlalchemy import or_, and_
+
+                dup_filters = [Lead.client_id == resolved_client_id]
+                contact_filters = []
+                if lead_data.email:
+                    contact_filters.append(Lead.email == lead_data.email)
+                if lead_data.phone:
+                    contact_filters.append(Lead.phone == lead_data.phone)
+
+                dup_filters.append(or_(*contact_filters))
+                dup_filters.append(
+                    Lead.created_at >= datetime.now(timezone.utc).replace(
+                        hour=0, minute=0, second=0, microsecond=0
+                    )
+                )
+
+                dup = await db.execute(
+                    select(Lead).where(and_(*dup_filters))
+                )
+                if dup.scalar_one_or_none():
+                    logger.info(f"Duplicate lead detected, skipping: {lead_data.email or lead_data.phone}")
+                    return
+
+            # Save lead
+            lead_record = Lead(
+                client_id=resolved_client_id,
+                conversation_id=conversation.id if conversation else None,
+                name=lead_data.name,
+                email=lead_data.email,
+                phone=lead_data.phone,
+                company=lead_data.company,
+                raw_messages=[
+                    {"role": m.get("role"), "content": m.get("content", "")[:500]}
+                    for m in lead_data.source_messages[-10:]
+                ],
+            )
+            db.add(lead_record)
+            await db.flush()
+
+            # Send email if configured
+            email_sent = False
+            email_error = None
+
+            if (
+                config.get("email_enabled")
+                and config.get("lead_email")
+                and config.get("lead_email_password")
+            ):
+                try:
+                    decrypted_pwd = decrypt_password(config["lead_email_password"])
+                    success, err = send_lead_email(
+                        sender_email=config["lead_email"],
+                        sender_password=decrypted_pwd,
+                        recipient_email=config["lead_email"],
+                        lead=lead_data,
+                        company_name=config.get("company_name", "Your Company"),
+                        bot_name=config.get("bot_name", "Neva"),
+                    )
+                    email_sent = success
+                    email_error = err
+                except Exception as email_err:
+                    email_error = str(email_err)
+                    logger.error(f"Email sending failed: {email_err}")
+
+            lead_record.email_sent = email_sent
+            lead_record.email_error = email_error
+            await db.commit()
+
+            # Broadcast to dashboard
+            await broadcast({
+                "type": "new_lead",
+                "lead_id": str(lead_record.id),
+                "client_id": client_id,
+                "name": lead_data.name,
+                "email": lead_data.email,
+                "phone": lead_data.phone,
+                "company": lead_data.company,
+                "email_sent": email_sent,
+            })
+
+            logger.info(
+                f"✅ Lead saved: {lead_data.name} ({lead_data.email}) — "
+                f"email {'sent' if email_sent else 'not sent'}"
+            )
+    except Exception as e:
+        logger.error(f"Failed to save lead: {e}")
+
+
 @app.get("/api/widget/config/{client_slug}", tags=["Widget"])
 async def get_widget_config(client_slug: str):
     """Return public branding config for a client widget."""
@@ -689,13 +807,14 @@ async def health_check():
     }
 
     try:
-        import ollama as ollama_client
-        models = ollama_client.list()
-        available_models = [m.model for m in models.models] if models.models else []
-        services["ollama"] = "up"
-        services["available_models"] = available_models
+        import google.generativeai as genai_check
+        genai_check.configure(api_key=os.getenv("GEMINI_API_KEY", ""))
+        models = genai_check.list_models()
+        available_models = [m.name for m in models if "generateContent" in [s.name for s in m.supported_generation_methods]]
+        services["gemini"] = "up"
+        services["available_models"] = available_models[:5]
     except Exception:
-        services["ollama"] = "down"
+        services["gemini"] = "down"
         services["available_models"] = []
 
     for cid, pipeline in client_pipelines.items():
@@ -703,7 +822,7 @@ async def health_check():
         services[f"pipeline_{slug}"] = "up"
         services[f"knowledge_base_{slug}"] = pipeline.get_collection_stats().get("total_documents", 0)
 
-    overall_status = "healthy" if services.get("ollama") == "up" and len(client_pipelines) > 0 else "degraded"
+    overall_status = "healthy" if services.get("gemini") == "up" and len(client_pipelines) > 0 else "degraded"
 
     return HealthResponse(
         status=overall_status,
@@ -964,19 +1083,106 @@ async def chat(request: ChatRequest, req: Request):
     # Stream the AI response
     async def response_stream():
         full_response = ""
+        # Buffer for detecting lead markers before streaming to client
+        stream_buffer = ""
+        marker_start_re = _re.compile(r"\[LEAD_")
+
         try:
             for token in rag_pipeline.chat_stream(request.message, history):
                 full_response += token
-                data = json.dumps({
-                    "type": "token",
-                    "content": token,
-                    "session_id": session_id,
-                })
-                yield f"data: {data}\n\n"
+                stream_buffer += token
+
+                # Check if buffer might contain a partial or full marker
+                if "[" in stream_buffer:
+                    # If we see a potential marker start, keep buffering
+                    if marker_start_re.search(stream_buffer):
+                        # Check if we have a complete marker to strip
+                        cleaned = LEAD_MARKER_PATTERN.sub("", stream_buffer)
+                        if cleaned != stream_buffer:
+                            # Marker found and stripped — flush cleaned text
+                            if cleaned.strip():
+                                data = json.dumps({
+                                    "type": "token",
+                                    "content": cleaned,
+                                    "session_id": session_id,
+                                })
+                                yield f"data: {data}\n\n"
+                            stream_buffer = ""
+                        # else: keep buffering until marker is complete or buffer is long
+                        elif len(stream_buffer) > 200:
+                            # Safety: flush if buffer gets too long (not a real marker)
+                            data = json.dumps({
+                                "type": "token",
+                                "content": stream_buffer,
+                                "session_id": session_id,
+                            })
+                            yield f"data: {data}\n\n"
+                            stream_buffer = ""
+                    else:
+                        # Has "[" but not "[LEAD_" — safe to flush
+                        data = json.dumps({
+                            "type": "token",
+                            "content": stream_buffer,
+                            "session_id": session_id,
+                        })
+                        yield f"data: {data}\n\n"
+                        stream_buffer = ""
+                else:
+                    # No "[" at all — flush immediately
+                    data = json.dumps({
+                        "type": "token",
+                        "content": stream_buffer,
+                        "session_id": session_id,
+                    })
+                    yield f"data: {data}\n\n"
+                    stream_buffer = ""
+
                 await asyncio.sleep(0.01)
 
-            add_to_history(session_id, "assistant", full_response)
-            await persist_message(session_id, "assistant", full_response, "text", page_url=request.page_url, client_id=client_id)
+            # Flush any remaining clean buffer content
+            if stream_buffer:
+                cleaned = LEAD_MARKER_PATTERN.sub("", stream_buffer).strip()
+                if cleaned:
+                    data = json.dumps({
+                        "type": "token",
+                        "content": cleaned,
+                        "session_id": session_id,
+                    })
+                    yield f"data: {data}\n\n"
+
+            # Strip lead markers from the visible response
+            clean_response = LEAD_MARKER_PATTERN.sub("", full_response).strip()
+
+            add_to_history(session_id, "assistant", clean_response)
+            await persist_message(session_id, "assistant", clean_response, "text", page_url=request.page_url, client_id=client_id)
+
+            # ── Lead capture processing ──
+            try:
+                all_messages = chat_sessions.get(session_id, [])
+                # Include the raw response (with markers) for extraction
+                extraction_messages = all_messages[:-1] + [
+                    {"role": "assistant", "content": full_response}
+                ]
+                lead_data = extract_lead_from_conversation(extraction_messages)
+
+                if lead_data.has_any_data:
+                    config = client_configs.get(client_id, {})
+                    # Save lead to database
+                    await _save_and_email_lead(
+                        lead_data=lead_data,
+                        session_id=session_id,
+                        client_id=client_id,
+                        config=config,
+                    )
+                    # Send lead_captured event to widget
+                    lead_event = json.dumps({
+                        "type": "lead_captured",
+                        "session_id": session_id,
+                        "fields": lead_data.to_dict(),
+                    })
+                    yield f"data: {lead_event}\n\n"
+            except Exception as le:
+                logger.error(f"Lead capture error (non-fatal): {le}")
 
         except Exception as e:
             logger.error(f"Error in chat stream: {str(e)}")

@@ -57,6 +57,13 @@ class Client(Base):
     # Escalation keywords override (JSON array, nullable => use defaults)
     escalation_keywords: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
+    # Email / Lead notification config (Gmail only, per-client)
+    lead_email: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    lead_email_password: Mapped[Optional[str]] = mapped_column(
+        String(500), nullable=True
+    )  # Fernet-encrypted Gmail App Password
+    email_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+
     # Meta
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -71,6 +78,9 @@ class Client(Base):
         back_populates="client", cascade="all, delete-orphan"
     )
     escalation_events: Mapped[List["EscalationEvent"]] = relationship(
+        back_populates="client", cascade="all, delete-orphan"
+    )
+    leads: Mapped[List["Lead"]] = relationship(
         back_populates="client", cascade="all, delete-orphan"
     )
 
@@ -255,3 +265,44 @@ class DashboardSettings(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+# ─────────────────────────────────────────────
+# Lead
+# ─────────────────────────────────────────────
+class Lead(Base):
+    __tablename__ = "leads"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    client_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("clients.id", ondelete="CASCADE"), index=True
+    )
+    conversation_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("conversations.id", ondelete="SET NULL"), nullable=True
+    )
+
+    # Captured lead fields
+    name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    email: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    phone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    company: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+
+    # Metadata
+    raw_messages: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    email_sent: Mapped[bool] = mapped_column(Boolean, default=False)
+    email_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    # Relationships
+    client: Mapped["Client"] = relationship(back_populates="leads")
+    conversation: Mapped[Optional["Conversation"]] = relationship()
+
+    __table_args__ = (
+        Index("idx_leads_client_created", "client_id", "created_at"),
+        Index("idx_leads_email_sent", "email_sent"),
+    )
+

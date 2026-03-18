@@ -5,6 +5,7 @@ import {
   Radio,
   AlertTriangle,
   Users,
+  UserPlus,
   Settings,
   Sparkles,
   Building2,
@@ -18,6 +19,7 @@ const links = [
   { to: '/live', label: 'Live Chat', icon: Radio },
   { to: '/escalations', label: 'Escalations', icon: AlertTriangle },
   { to: '/users', label: 'Users', icon: Users },
+  { to: '/leads', label: 'Leads', icon: UserPlus },
   { to: '/clients', label: 'Clients', icon: Building2 },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];

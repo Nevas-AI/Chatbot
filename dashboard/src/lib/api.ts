@@ -29,6 +29,8 @@ export interface Client {
   website_url: string | null;
   collection_name: string;
   escalation_keywords: Record<string, unknown> | null;
+  lead_email: string | null;
+  email_enabled: boolean;
   is_active: boolean;
   created_at: string;
 }
@@ -46,6 +48,9 @@ export interface ClientCreateInput {
   business_hours?: string;
   website_url?: string;
   collection_name?: string;
+  lead_email?: string;
+  lead_email_password?: string;
+  email_enabled?: boolean;
 }
 
 export const getClients = () => request<Client[]>('/api/dashboard/clients');
@@ -206,4 +211,32 @@ export const updateUserTags = (id: string, tags: Record<string, unknown>) =>
   request<{ status: string }>(`/api/dashboard/users/${id}/tags`, {
     method: 'PUT',
     body: JSON.stringify({ tags }),
+  });
+
+/* ─── Leads ─── */
+
+export interface Lead {
+  id: string;
+  client_id: string;
+  conversation_id: string | null;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  company: string | null;
+  email_sent: boolean;
+  email_error: string | null;
+  created_at: string;
+}
+
+export const getLeads = (params: Record<string, string | number | boolean> = {}) => {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== '' && v !== undefined) qs.set(k, String(v));
+  });
+  return request<Lead[]>(`/api/dashboard/leads?${qs}`);
+};
+
+export const testClientEmail = (clientId: string) =>
+  request<{ status: string; message: string }>(`/api/dashboard/clients/${clientId}/test-email`, {
+    method: 'POST',
   });

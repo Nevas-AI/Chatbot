@@ -1,0 +1,500 @@
+# 🚀 Neva Chatbot — VPS Deployment Guide
+
+**Target:** Ubuntu 24.04 (Hostinger VPS) • Subdomain: `neva.nevas.ai` • Nginx (already installed)
+**AI Provider:** Google Gemini API (free tier) — no Ollama needed
+
+---
+
+## Table of Contents
+1. [Get Gemini API Key](#1-get-gemini-api-key-free)
+2. [DNS Setup (Bigrock)](#2-dns-setup-bigrock)
+3. [SSH into VPS](#3-ssh-into-vps)
+4. [Install System Dependencies](#4-install-system-dependencies)
+5. [Setup PostgreSQL + pgvector](#5-setup-postgresql--pgvector)
+6. [Clone & Setup Backend](#6-clone--setup-backend)
+7. [Build the Dashboard](#7-build-the-dashboard)
+8. [Configure Nginx](#8-configure-nginx)
+9. [Setup SSL (Let's Encrypt)](#9-setup-ssl-lets-encrypt)
+10. [Create Systemd Service](#10-create-systemd-service)
+11. [Start Everything](#11-start-everything)
+12. [Pushing Updates from Local](#12-pushing-updates-from-local)
+13. [Deploying Updates on VPS](#13-deploying-updates-on-vps)
+
+---
+
+## 1. Get Gemini API Key (Free)
+
+1. Go to [Google AI Studio](https://aistudio.google.com/apikey)
+2. Sign in with your Google account
+3. Click **"Create API Key"**
+4. Copy the key — you'll need it for the [.env](file:///d:/Prabhu%20V/chatbot-project/backend/.env) file
+
+> [!NOTE]
+> The free tier gives you **15 RPM** (requests per minute) and **1 million tokens/day** — more than enough for a chatbot.
+
+---
+
+## 2. DNS Setup (Bigrock)
+
+Log in to your **Bigrock** DNS management panel and add an **A record**:
+
+| Type | Host | Value | TTL |
+|------|------|-------|-----|
+| A | `neva` | `YOUR_VPS_IP_ADDRESS` | 3600 |
+
+> [!NOTE]
+> DNS propagation takes **5–30 min** (sometimes up to 24h). Check with: `nslookup neva.nevas.ai`
+
+---
+
+## 3. SSH into VPS
+
+```bash
+ssh root@YOUR_VPS_IP_ADDRESS
+```
+
+---
+
+## 4. Install System Dependencies
+
+```bash
+# Update system
+sudo apt update && sudo apt upgrade -y
+
+# Python 3.12 + build tools
+sudo apt install -y python3 python3-pip python3-venv python3-dev \
+  build-essential git curl wget libpq-dev
+
+# Node.js 20.x (for building the dashboard)
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Certbot for SSL
+sudo apt install -y certbot python3-certbot-nginx
+```
+
+---
+
+## 5. Setup PostgreSQL + pgvector
+
+```bash
+# Install PostgreSQL 16
+sudo apt install -y postgresql postgresql-contrib
+
+# Install pgvector extension
+sudo apt install -y postgresql-16-pgvector
+```
+
+Create the database:
+
+```bash
+sudo -u postgres psql
+```
+
+```sql
+CREATE USER neva_user WITH PASSWORD 'YOUR_STRONG_DB_PASSWORD';
+CREATE DATABASE neva_chatbot OWNER neva_user;
+\c neva_chatbot
+CREATE EXTENSION IF NOT EXISTS vector;
+GRANT ALL PRIVILEGES ON DATABASE neva_chatbot TO neva_user;
+\q
+```
+
+> [!CAUTION]
+> Replace `YOUR_STRONG_DB_PASSWORD` with a real secure password.
+
+---
+
+## 6. Clone & Setup Backend
+
+### 6.1 Clone the repository
+
+```bash
+sudo mkdir -p /var/www/neva-chatbot
+sudo chown $USER:$USER /var/www/neva-chatbot
+git clone https://github.com/Nevas-AI/Chatbot.git /var/www/neva-chatbot
+cd /var/www/neva-chatbot
+```
+
+### 6.2 Setup Python virtual environment
+
+```bash
+cd /var/www/neva-chatbot/backend
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+### 6.3 Configure environment variables
+
+```bash
+nano .env
+```
+
+Update with **production values**:
+
+```env
+# ===========================================
+# Neva Chatbot - Production Configuration
+# ===========================================
+
+WEBSITE_URL=https://nevastech.com
+
+# Company Information
+COMPANY_NAME=Nevas Technologies
+SUPPORT_EMAIL=info@nevastech.com
+SUPPORT_PHONE=+91 0123456789
+BUSINESS_HOURS=Mon-Sat 9AM-6PM IST
+
+# Google Gemini API (FREE)
+GEMINI_API_KEY=paste_your_gemini_api_key_here
+LLM_MODEL=gemini-2.0-flash
+EMBEDDING_MODEL=text-embedding-004
+
+# ChromaDB Configuration
+CHROMA_PERSIST_DIR=/var/www/neva-chatbot/backend/chroma_db
+CHROMA_COLLECTION_NAME=aria_knowledge
+
+# Scraper Configuration
+MAX_PAGES=100
+AUTO_REFRESH_HOURS=24
+
+# Database (UPDATE PASSWORD!)
+DATABASE_URL=postgresql+asyncpg://neva_user:YOUR_STRONG_DB_PASSWORD@localhost:5432/neva_chatbot
+
+# Dashboard Password
+DASHBOARD_PASSWORD=YOUR_DASHBOARD_PASSWORD
+
+# Fernet key (generate fresh one below)
+FERNET_KEY=GENERATE_NEW_KEY
+```
+
+Generate a fresh Fernet key:
+
+```bash
+source venv/bin/activate
+python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+Copy the output and paste it as the `FERNET_KEY` value.
+
+### 6.4 Test the backend
+
+```bash
+source venv/bin/activate
+uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+You should see `✅ Database tables created successfully`. Press **Ctrl+C** to stop.
+
+---
+
+## 7. Build the Dashboard
+
+### 7.1 Update Vite base path
+
+The dashboard is served at `/dashboard/`, so update the Vite config:
+
+```bash
+nano /var/www/neva-chatbot/dashboard/vite.config.ts
+```
+
+Add `base: '/dashboard/'`:
+
+```typescript
+export default defineConfig({
+  base: '/dashboard/',   // ← Add this line
+  plugins: [react(), tailwindcss()],
+  server: {
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+    },
+  },
+})
+```
+
+### 7.2 Build
+
+```bash
+cd /var/www/neva-chatbot/dashboard
+
+# Create production env (empty VITE_API_URL = use relative paths)
+echo 'VITE_API_URL=' > .env.production
+
+npm install
+npm run build
+```
+
+---
+
+## 8. Configure Nginx
+
+```bash
+sudo nano /etc/nginx/sites-available/neva.nevas.ai
+```
+
+Paste:
+
+```nginx
+server {
+    listen 80;
+    server_name neva.nevas.ai;
+
+    # === Backend API ===
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # SSE support (streaming chat)
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 300s;
+        proxy_set_header Connection '';
+        chunked_transfer_encoding off;
+    }
+
+    # === WebSocket (live dashboard updates) ===
+    location /api/dashboard/ws/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_read_timeout 86400;
+    }
+
+    # === Dashboard (Vite static build) ===
+    location /dashboard/ {
+        alias /var/www/neva-chatbot/dashboard/dist/;
+        try_files $uri $uri/ /dashboard/index.html;
+    }
+
+    # === Widget JS ===
+    location /widget/ {
+        alias /var/www/neva-chatbot/widget/;
+        add_header Access-Control-Allow-Origin *;
+        add_header Cache-Control "public, max-age=3600";
+    }
+
+    # === Root redirect ===
+    location = / {
+        return 301 /dashboard/;
+    }
+
+    client_max_body_size 50M;
+}
+```
+
+Enable and test:
+
+```bash
+sudo ln -sf /etc/nginx/sites-available/neva.nevas.ai /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+---
+
+## 9. Setup SSL (Let's Encrypt)
+
+```bash
+sudo certbot --nginx -d neva.nevas.ai
+```
+
+- Enter your email, agree to ToS
+- Choose **redirect HTTP → HTTPS** (option 2)
+
+Verify auto-renewal:
+
+```bash
+sudo certbot renew --dry-run
+```
+
+---
+
+## 10. Create Systemd Service
+
+```bash
+sudo nano /etc/systemd/system/neva-backend.service
+```
+
+```ini
+[Unit]
+Description=Neva Chatbot Backend (FastAPI + Gemini)
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/var/www/neva-chatbot/backend
+Environment=PATH=/var/www/neva-chatbot/backend/venv/bin:/usr/bin
+ExecStart=/var/www/neva-chatbot/backend/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --workers 2
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+---
+
+## 11. Start Everything
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable neva-backend
+sudo systemctl start neva-backend
+
+# Verify
+sudo systemctl status neva-backend
+sudo systemctl status postgresql
+sudo systemctl status nginx
+```
+
+### Test these URLs in your browser:
+
+| URL | Expected |
+|-----|----------|
+| `https://neva.nevas.ai/dashboard/` | Dashboard login |
+| `https://neva.nevas.ai/api/health` | `{"status": "healthy", ...}` |
+| `https://neva.nevas.ai/widget/aria-widget.js` | Widget JS file |
+
+### View logs if needed:
+
+```bash
+sudo journalctl -u neva-backend -f       # Backend logs
+sudo tail -f /var/log/nginx/error.log     # Nginx errors
+```
+
+---
+
+## 12. Pushing Updates from Local
+
+On your **local Windows machine**:
+
+```bash
+# Navigate to project
+cd "d:\Prabhu V\chatbot-project"
+
+# Check changes
+git status
+
+# Stage → Commit → Push
+git add .
+git commit -m "feat: your change description"
+git push origin main
+```
+
+To push **specific files only**:
+
+```bash
+git add backend/rag.py dashboard/src/pages/LeadsPage.tsx
+git commit -m "fix: specific fix description"
+git push origin main
+```
+
+---
+
+## 13. Deploying Updates on VPS
+
+### Option A: Manual steps
+
+```bash
+ssh root@YOUR_VPS_IP_ADDRESS
+
+cd /var/www/neva-chatbot
+git pull origin main
+
+# If backend changed:
+cd backend && source venv/bin/activate && pip install -r requirements.txt && deactivate
+
+# If dashboard changed:
+cd /var/www/neva-chatbot/dashboard && npm install && npm run build
+
+# Restart
+sudo systemctl restart neva-backend
+```
+
+### Option B: One-command deploy script (recommended)
+
+Create the script once:
+
+```bash
+sudo nano /var/www/neva-chatbot/deploy.sh
+```
+
+```bash
+#!/bin/bash
+set -e
+echo "🚀 Deploying Neva Chatbot..."
+
+cd /var/www/neva-chatbot
+echo "📥 Pulling latest code..."
+git pull origin main
+
+echo "🐍 Updating backend..."
+cd backend
+source venv/bin/activate
+pip install -r requirements.txt --quiet
+deactivate
+
+echo "🏗️ Building dashboard..."
+cd /var/www/neva-chatbot/dashboard
+npm install --silent
+npm run build
+
+echo "🔄 Restarting backend..."
+sudo systemctl restart neva-backend
+
+echo "✅ Done! → https://neva.nevas.ai/dashboard/"
+```
+
+```bash
+chmod +x /var/www/neva-chatbot/deploy.sh
+```
+
+**Deploy from anywhere:**
+
+```bash
+ssh root@YOUR_VPS_IP_ADDRESS "/var/www/neva-chatbot/deploy.sh"
+```
+
+---
+
+## 📋 Quick Reference
+
+| Task | Command |
+|------|---------|
+| Check backend | `sudo systemctl status neva-backend` |
+| Restart backend | `sudo systemctl restart neva-backend` |
+| View logs | `sudo journalctl -u neva-backend -f` |
+| Reload Nginx | `sudo systemctl reload nginx` |
+| Renew SSL | `sudo certbot renew` |
+| Deploy update | `/var/www/neva-chatbot/deploy.sh` |
+| Edit .env | `nano /var/www/neva-chatbot/backend/.env` |
+
+---
+
+## 🔗 Widget Embed Code
+
+Give this to clients:
+
+```html
+<script>
+  window.ARIA_CONFIG = {
+    serverUrl: "https://neva.nevas.ai",
+    clientId: "CLIENT_SLUG_HERE"
+  };
+</script>
+<script src="https://neva.nevas.ai/widget/aria-widget.js"></script>
+```
