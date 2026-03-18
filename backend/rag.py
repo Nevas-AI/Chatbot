@@ -240,7 +240,7 @@ If it is clearly out of scope, use the decline message above.
         config = config or {}
         self.gemini_api_key = config.get("gemini_api_key", os.getenv("GEMINI_API_KEY", ""))
         self.llm_model = config.get("llm_model", os.getenv("LLM_MODEL", "gemini-2.0-flash"))
-        self.embedding_model = config.get("embedding_model", os.getenv("EMBEDDING_MODEL", "text-embedding-004"))
+        self.embedding_model = config.get("embedding_model", os.getenv("EMBEDDING_MODEL", "gemini-embedding-001"))
         self.persist_dir = config.get("persist_dir", os.getenv("CHROMA_PERSIST_DIR", "./chroma_db"))
         self.collection_name = config.get("collection_name", os.getenv("CHROMA_COLLECTION_NAME", "aria_knowledge"))
         self.company_name = config.get("company_name", os.getenv("COMPANY_NAME", "Your Company"))
