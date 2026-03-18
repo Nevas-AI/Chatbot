@@ -18,7 +18,7 @@ function ProtectedRoutes({ children, onLogout }: PropsWithChildren<{ onLogout: (
 
 function AppRoutes({ onLogout }: { onLogout: () => void }) {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/dashboard">
       <Routes>
         <Route element={<DashboardLayout />}>
           <Route path="/" element={<DashboardPage />} />
