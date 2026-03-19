@@ -240,3 +240,24 @@ export const testClientEmail = (clientId: string) =>
   request<{ status: string; message: string }>(`/api/dashboard/clients/${clientId}/test-email`, {
     method: 'POST',
   });
+
+/* ─── Logo Upload ─── */
+
+export const uploadClientLogo = async (clientId: string, file: File): Promise<{ logo_url: string }> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`${API_BASE}/api/dashboard/clients/${clientId}/logo`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || 'Upload failed');
+  }
+  return res.json();
+};
+
+export const deleteClientLogo = (clientId: string) =>
+  request<{ status: string }>(`/api/dashboard/clients/${clientId}/logo`, {
+    method: 'DELETE',
+  });

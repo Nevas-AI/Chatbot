@@ -16,7 +16,10 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect, UploadFile, File
+import uuid as uuid_mod
+import shutil
+from pathlib import Path
 from sqlalchemy import select, func, and_, or_, desc, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -402,6 +405,106 @@ async def delete_client(client_id: UUID, db: AsyncSession = Depends(get_db)):
         pass
 
     return {"status": "deleted", "client_id": str(client_id)}
+
+
+# ─────────────────────────────────────────────
+# Client Logo Upload
+# ─────────────────────────────────────────────
+
+UPLOAD_DIR = Path(__file__).parent / "uploads" / "logos"
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".svg", ".webp", ".gif"}
+MAX_LOGO_SIZE = 2 * 1024 * 1024  # 2MB
+
+
+@router.post("/clients/{client_id}/logo")
+async def upload_client_logo(
+    client_id: UUID,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload a logo image for a client."""
+    result = await db.execute(select(Client).where(Client.id == client_id))
+    client = result.scalar_one_or_none()
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    # Validate file type
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file type '{ext}'. Allowed: {', '.join(ALLOWED_EXTENSIONS)}",
+        )
+
+    # Read and validate size
+    contents = await file.read()
+    if len(contents) > MAX_LOGO_SIZE:
+        raise HTTPException(status_code=400, detail="File too large. Max 2MB.")
+
+    # Generate unique filename
+    filename = f"{client.slug}_{uuid_mod.uuid4().hex[:8]}{ext}"
+    filepath = UPLOAD_DIR / filename
+
+    # Delete old logo file if exists
+    if client.logo_url:
+        old_filename = client.logo_url.split("/")[-1]
+        old_path = UPLOAD_DIR / old_filename
+        if old_path.exists():
+            old_path.unlink()
+
+    # Save file
+    with open(filepath, "wb") as f:
+        f.write(contents)
+
+    # Update client record
+    logo_url = f"/api/uploads/logos/{filename}"
+    client.logo_url = logo_url
+    await db.flush()
+    await db.refresh(client)
+
+    # Update config cache
+    try:
+        from main import client_configs
+        cid = str(client.id)
+        if cid in client_configs:
+            client_configs[cid]["logo_url"] = logo_url
+    except Exception:
+        pass
+
+    return {"logo_url": logo_url, "filename": filename}
+
+
+@router.delete("/clients/{client_id}/logo")
+async def delete_client_logo(
+    client_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a client's logo."""
+    result = await db.execute(select(Client).where(Client.id == client_id))
+    client = result.scalar_one_or_none()
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    if client.logo_url:
+        old_filename = client.logo_url.split("/")[-1]
+        old_path = UPLOAD_DIR / old_filename
+        if old_path.exists():
+            old_path.unlink()
+
+    client.logo_url = None
+    await db.flush()
+
+    # Update config cache
+    try:
+        from main import client_configs
+        cid = str(client.id)
+        if cid in client_configs:
+            client_configs[cid]["logo_url"] = None
+    except Exception:
+        pass
+
+    return {"status": "deleted"}
 
 
 # ─────────────────────────────────────────────

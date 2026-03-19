@@ -317,6 +317,13 @@ app = FastAPI(
 # Mount dashboard routes
 app.include_router(dashboard_router)
 
+# Serve uploaded files (logos, etc.)
+from pathlib import Path as _Path
+_uploads_dir = _Path(__file__).parent / "uploads"
+_uploads_dir.mkdir(parents=True, exist_ok=True)
+from starlette.staticfiles import StaticFiles
+app.mount("/api/uploads", StaticFiles(directory=str(_uploads_dir)), name="uploads")
+
 # Enable CORS for all origins (widget can be embedded anywhere)
 app.add_middleware(
     CORSMiddleware,

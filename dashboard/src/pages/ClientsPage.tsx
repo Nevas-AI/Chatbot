@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { createClient, updateClient, deleteClient, testClientEmail, Client, ClientCreateInput } from '../lib/api';
+import { useState, useEffect, useRef } from 'react';
+import { createClient, updateClient, deleteClient, testClientEmail, uploadClientLogo, deleteClientLogo, Client, ClientCreateInput } from '../lib/api';
 import { useClient } from '../contexts/ClientContext';
-import { Plus, Edit2, Trash2, Globe, Mail, Phone, Clock, Palette, Save, X, Send, Lock, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Edit2, Trash2, Globe, Mail, Phone, Clock, Palette, Save, X, Send, Lock, ToggleLeft, ToggleRight, Upload, Image } from 'lucide-react';
 
 const emptyForm: ClientCreateInput = {
   name: '',
@@ -28,6 +28,7 @@ export default function ClientsPage() {
   const [form, setForm] = useState<ClientCreateInput>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [testingEmail, setTestingEmail] = useState(false);
   const [emailTestResult, setEmailTestResult] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
 
@@ -148,6 +149,12 @@ export default function ClientsPage() {
         </div>
       )}
 
+      {success && (
+        <div className="card" style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', marginBottom: 16, padding: '12px 16px', color: '#22c55e' }}>
+          ✓ {success}
+        </div>
+      )}
+
       {showForm && (
         <div className="card" style={{ marginBottom: 24, padding: 24 }}>
           <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: 20 }}>
@@ -238,9 +245,74 @@ export default function ClientsPage() {
             </div>
             <div style={{ gridColumn: '1 / -1' }}>
               <label style={{ display: 'block', marginBottom: 6, fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
-                Logo URL
+                <Image size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+                Bot Logo
               </label>
-              <input className="input" value={form.logo_url} onChange={(e) => handleChange('logo_url', e.target.value)} placeholder="https://example.com/logo.png" />
+              {editingId && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
+                  {form.logo_url && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <img
+                        src={form.logo_url}
+                        alt="Logo"
+                        style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--color-border)' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await deleteClientLogo(editingId);
+                            handleChange('logo_url', '');
+                            setSuccess('Logo removed'); setTimeout(() => setSuccess(''), 3000);
+                          } catch (e: any) {
+                            setError(e.message);
+                          }
+                        }}
+                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}
+                      >
+                        <Trash2 size={14} /> Remove
+                      </button>
+                    </div>
+                  )}
+                  <label
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px',
+                      background: 'var(--color-bg-secondary)', border: '1px dashed var(--color-border)',
+                      borderRadius: 8, cursor: 'pointer', fontSize: '0.85rem', fontWeight: 500,
+                      color: 'var(--color-text-muted)', transition: 'all 0.2s',
+                    }}
+                  >
+                    <Upload size={16} />
+                    {form.logo_url ? 'Change Logo' : 'Upload Logo'}
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/svg+xml,image/webp,image/gif"
+                      style={{ display: 'none' }}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (file.size > 2 * 1024 * 1024) {
+                          setError('File too large. Max 2MB.');
+                          return;
+                        }
+                        try {
+                          const res = await uploadClientLogo(editingId, file);
+                          handleChange('logo_url', res.logo_url);
+                          setSuccess('Logo uploaded!'); setTimeout(() => setSuccess(''), 3000);
+                        } catch (err: any) {
+                          setError(err.message);
+                        }
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                </div>
+              )}
+              {!editingId && (
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
+                  Save the client first, then upload a logo.
+                </p>
+              )}
             </div>
           </div>
 

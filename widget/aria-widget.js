@@ -712,7 +712,7 @@
     chatWindow.id = "aria-chat-window";
     chatWindow.innerHTML = `
       <div id="aria-chat-header">
-        <div id="aria-bot-avatar">🤖</div>
+        <div id="aria-bot-avatar">${CONFIG._logoUrl ? '<img src="' + CONFIG.apiUrl + CONFIG._logoUrl + '" alt="bot" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">' : '🤖'}</div>
         <div id="aria-header-info">
           <div id="aria-header-name">${escapeHtml(CONFIG.botName)}</div>
           <div id="aria-header-status">
@@ -859,7 +859,12 @@
 
     var html = "";
     if (type === "bot") {
-      html += '<div class="aria-msg-avatar">🤖</div>';
+      var logoUrl = CONFIG._logoUrl ? (CONFIG.apiUrl + CONFIG._logoUrl) : '';
+      if (logoUrl) {
+        html += '<div class="aria-msg-avatar"><img src="' + logoUrl + '" alt="bot" style="width:24px;height:24px;border-radius:50%;object-fit:cover;"></div>';
+      } else {
+        html += '<div class="aria-msg-avatar">🤖</div>';
+      }
     }
     html += '<div class="aria-msg-content">';
     html += '<div class="aria-msg-bubble">' + formatMessage(text) + "</div>";
@@ -948,7 +953,7 @@
     typing.className = "aria-typing";
     typing.id = "aria-typing-indicator";
     typing.innerHTML = `
-      <div class="aria-msg-avatar">🤖</div>
+      <div class="aria-msg-avatar">${CONFIG._logoUrl ? '<img src="' + CONFIG.apiUrl + CONFIG._logoUrl + '" alt="bot" style="width:24px;height:24px;border-radius:50%;object-fit:cover;">' : '🤖'}</div>
       <div class="aria-typing-dots">
         <div class="aria-typing-dot"></div>
         <div class="aria-typing-dot"></div>
@@ -977,7 +982,7 @@
     var timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
     wrapper.innerHTML = `
-      <div class="aria-msg-avatar">🤖</div>
+      <div class="aria-msg-avatar">${CONFIG._logoUrl ? '<img src="' + CONFIG.apiUrl + CONFIG._logoUrl + '" alt="bot" style="width:24px;height:24px;border-radius:50%;object-fit:cover;">' : '🤖'}</div>
       <div class="aria-msg-content">
         <div class="aria-msg-bubble" id="${currentId}"></div>
         <span class="aria-msg-time">${timeStr}</span>
@@ -1218,6 +1223,7 @@
         if (data.primary_color) CONFIG.primaryColor = data.primary_color;
         if (data.company_name) CONFIG.companyName = data.company_name;
         if (data.welcome_msg) CONFIG._welcomeMsg = data.welcome_msg;
+        if (data.logo_url) CONFIG._logoUrl = data.logo_url;
         // Recompute color variables
         primaryHSL = hexToHSL(CONFIG.primaryColor);
       }
