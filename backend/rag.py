@@ -318,7 +318,16 @@ CONTACT INFORMATION
 Email: {support_email}
 Phone: {support_phone}
 Business Hours: {business_hours}
-Share
+
+REFERENCE LINKS (CRITICAL)
+If the user's message is an Informational or Evaluative question about ERP solutions, services, or products, and you used the provided CONTEXT, you MUST append a references section at the end of your response listing exactly 1 to 3 relevant URLs from the CONTEXT.
+Format it EXACTLY like this:
+
+**References:**
+- <URL 1>
+- <URL 2>
+
+Do NOT provide references for Conversational messages, greetings, simple requests, or if you did not use the CONTEXT.
 """
 
     def __init__(self, config: Optional[Dict] = None):
@@ -562,7 +571,11 @@ Share
                 context_parts.append(f"[FAQ] {content}")
             else:
                 title = result["metadata"].get("title", "")
-                context_parts.append(f"[Source: {title or source}]\n{content}")
+                url = result["metadata"].get("url", "")
+                if url:
+                    context_parts.append(f"[Source: {title or source}] [URL: {url}]\n{content}")
+                else:
+                    context_parts.append(f"[Source: {title or source}]\n{content}")
 
         return "\n\n---\n\n".join(context_parts)
 
@@ -589,22 +602,7 @@ Share
 
             chat = model.start_chat(history=gemini_history)
             response = chat.send_message(messages[-1]["content"])
-            
-            final_response = response.text
-            
-            # Format and append unique references from contexts
-            urls = []
-            for r in results:
-                url = r.get("metadata", {}).get("url")
-                if url and url not in urls:
-                    urls.append(url)
-                    
-            if urls:
-                final_response += "\n\n**References:**\n"
-                for url in urls:
-                    final_response += f"- {url}\n"
-                    
-            return final_response.strip()
+            return response.text
         except Exception as e:
             logger.error(f"Error generating chat response: {str(e)}")
             return (
@@ -639,18 +637,6 @@ Share
             for chunk in response:
                 if chunk.text:
                     yield chunk.text
-
-            # Append unique references after streaming the message
-            urls = []
-            for r in results:
-                url = r.get("metadata", {}).get("url")
-                if url and url not in urls:
-                    urls.append(url)
-                    
-            if urls:
-                yield "\n\n**References:**\n"
-                for url in urls:
-                    yield f"- {url}\n"
         except Exception as e:
             logger.error(f"Error streaming chat response: {str(e)}")
             yield (
