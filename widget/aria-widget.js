@@ -728,7 +728,7 @@
         </button>
       </div>
       <div id="aria-messages"></div>
-      
+      <button id="aria-human-btn">Speak with human support</button>
       
       <div id="aria-input-bar">
         <textarea id="aria-message-input" placeholder="Type your message..." rows="1"></textarea>

@@ -109,7 +109,7 @@ class VectorStore:
 
 
 class RAGPipeline:
-    """
+    SYSTEM_PROMPT = """
     You are {bot_name}, a friendly and intelligent AI assistant for {company_name},
 a Microsoft ERP solutions provider specializing in:
 
