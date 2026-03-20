@@ -494,7 +494,22 @@ If it is clearly out of scope, use the decline message above.
 
             chat = model.start_chat(history=gemini_history)
             response = chat.send_message(messages[-1]["content"])
-            return response.text
+            
+            final_response = response.text
+            
+            # Format and append unique references from contexts
+            urls = []
+            for r in results:
+                url = r.get("metadata", {}).get("url")
+                if url and url not in urls:
+                    urls.append(url)
+                    
+            if urls:
+                final_response += "\n\n**References:**\n"
+                for url in urls:
+                    final_response += f"- {url}\n"
+                    
+            return final_response.strip()
         except Exception as e:
             logger.error(f"Error generating chat response: {str(e)}")
             return (
@@ -529,6 +544,18 @@ If it is clearly out of scope, use the decline message above.
             for chunk in response:
                 if chunk.text:
                     yield chunk.text
+
+            # Append unique references after streaming the message
+            urls = []
+            for r in results:
+                url = r.get("metadata", {}).get("url")
+                if url and url not in urls:
+                    urls.append(url)
+                    
+            if urls:
+                yield "\n\n**References:**\n"
+                for url in urls:
+                    yield f"- {url}\n"
         except Exception as e:
             logger.error(f"Error streaming chat response: {str(e)}")
             yield (

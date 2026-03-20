@@ -244,10 +244,13 @@ export default function ClientsPage() {
               />
             </div>
             <div style={{ gridColumn: '1 / -1' }}>
-              <label style={{ display: 'block', marginBottom: 6, fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+              <label style={{ display: 'block', marginBottom: 2, fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
                 <Image size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
                 Bot Logo
               </label>
+              <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: '0 0 8px', opacity: 0.7 }}>
+                Recommended: 128×128px, square, PNG or SVG. Max 2MB.
+              </p>
               {editingId && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
                   {form.logo_url && (
