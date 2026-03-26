@@ -676,6 +676,7 @@ async def _save_and_email_lead(
     session_id: str,
     client_id: str,
     config: dict,
+    full_history: Optional[List[Dict]] = None,
 ) -> None:
     """Save a captured lead to the DB and optionally send an email notification."""
     try:
@@ -692,31 +693,22 @@ async def _save_and_email_lead(
             except ValueError:
                 pass
 
-            # Check for duplicate: same client + email or phone in last 24 hours
-            if lead_data.email or lead_data.phone:
-                from sqlalchemy import or_, and_
-
-                dup_filters = [Lead.client_id == resolved_client_id]
-                contact_filters = []
-                if lead_data.email:
-                    contact_filters.append(Lead.email == lead_data.email)
-                if lead_data.phone:
-                    contact_filters.append(Lead.phone == lead_data.phone)
-
-                dup_filters.append(or_(*contact_filters))
-                dup_filters.append(
-                    Lead.created_at >= datetime.now(timezone.utc).replace(
-                        hour=0, minute=0, second=0, microsecond=0
+            # Check if this exact lead data was already captured in this conversation to prevent spam
+            if conversation:
+                dup = await db.execute(
+                    select(Lead).where(
+                        Lead.conversation_id == conversation.id,
+                        Lead.name == lead_data.name,
+                        Lead.email == lead_data.email,
+                        Lead.phone == lead_data.phone,
+                        Lead.company == lead_data.company
                     )
                 )
-
-                dup = await db.execute(
-                    select(Lead).where(and_(*dup_filters))
-                )
                 if dup.scalar_one_or_none():
-                    logger.info(f"Duplicate lead detected, skipping: {lead_data.email or lead_data.phone}")
+                    # Exact lead info already captured and emailed for this session, skip
                     return
 
+            messages_to_store = full_history if full_history else lead_data.source_messages
             # Save lead
             lead_record = Lead(
                 client_id=resolved_client_id,
@@ -726,8 +718,8 @@ async def _save_and_email_lead(
                 phone=lead_data.phone,
                 company=lead_data.company,
                 raw_messages=[
-                    {"role": m.get("role"), "content": m.get("content", "")[:500]}
-                    for m in lead_data.source_messages[-10:]
+                    {"role": m.get("role"), "content": m.get("content", "")}
+                    for m in messages_to_store
                 ],
             )
             db.add(lead_record)
@@ -751,6 +743,7 @@ async def _save_and_email_lead(
                         lead=lead_data,
                         company_name=config.get("company_name", "Your Company"),
                         bot_name=config.get("bot_name", "Neva"),
+                        full_history=full_history,
                     )
                     email_sent = success
                     email_error = err
@@ -1180,6 +1173,7 @@ async def chat(request: ChatRequest, req: Request):
                         session_id=session_id,
                         client_id=client_id,
                         config=config,
+                        full_history=all_messages,
                     )
                     # Send lead_captured event to widget
                     lead_event = json.dumps({

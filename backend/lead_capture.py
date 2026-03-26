@@ -19,6 +19,7 @@ from datetime import datetime
 
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
+import google.generativeai as genai
 
 load_dotenv()
 
@@ -249,6 +250,7 @@ def send_lead_email(
     lead: LeadData,
     company_name: str = "Your Company",
     bot_name: str = "Neva",
+    full_history: Optional[List[Dict]] = None,
 ) -> tuple[bool, Optional[str]]:
     """
     Send a lead notification email via Gmail SMTP.
@@ -283,20 +285,55 @@ def send_lead_email(
         if lead.company:
             lead_rows += _email_row("🏢 Company", lead.company)
 
+        # Build AI Summary
+        ai_summary_html = ""
+        ai_summary_text_block = ""
+        if full_history:
+            try:
+                # Basic Gemini model generation
+                api_key = os.getenv("GEMINI_API_KEY")
+                if api_key:
+                    genai.configure(api_key=api_key)
+                    model = genai.GenerativeModel("gemini-2.5-flash")
+                    chat_text = "\n".join([f"{m.get('role', 'unknown').capitalize()}: {m.get('content', '')}" for m in full_history])
+                    
+                    prompt = (
+                        f"You are an assistant for {company_name}. A new lead has been captured.\n"
+                        f"Lead Name: {lead.name or 'Unknown'}\n\n"
+                        f"Review the following chat history and provide a concise, professional summary (3-4 sentences) "
+                        f"of what the lead is looking for, their pain points, and any relevant context for the sales team.\n\n"
+                        f"Chat History:\n{chat_text}\n\nSummary:"
+                    )
+                    
+                    response = model.generate_content(prompt)
+                    summary_text = response.text.strip()
+                    
+                    ai_summary_html = (
+                        f"<div style='background: #eef2ff; border-left: 4px solid #4f46e5; padding: 16px; margin-top: 24px; border-radius: 4px;'>"
+                        f"<h3 style='color: #4f46e5; margin-top: 0; font-size: 16px;'>🤖 AI Summary</h3>"
+                        f"<p style='color: #374151; margin: 0; font-size: 14px; line-height: 1.5;'>{summary_text}</p>"
+                        f"</div>"
+                    )
+                    ai_summary_text_block = f"\nAI Summary:\n{summary_text}\n"
+            except Exception as e:
+                logger.error(f"Failed to generate lead summary: {e}")
+
         # Build conversation excerpt
         conversation_html = ""
-        if lead.source_messages:
-            conversation_html = "<h3 style='color: #374151; margin-top: 24px;'>💬 Conversation Excerpt</h3>"
-            conversation_html += "<div style='background: #f9fafb; border-radius: 8px; padding: 16px; margin-top: 8px;'>"
-            for m in lead.source_messages[-10:]:
+        messages_to_show = full_history if full_history is not None else lead.source_messages[-10:]
+        
+        if messages_to_show:
+            conversation_html = "<h3 style='color: #374151; margin-top: 24px;'>💬 Conversation History</h3>"
+            conversation_html += "<div style='background: #f9fafb; border-radius: 8px; padding: 16px; margin-top: 8px; max-height: 400px; overflow-y: auto;'>"
+            for m in messages_to_show:
                 role = m.get("role", "unknown")
-                content = m.get("content", "")[:300]
+                content = m.get("content", "")
                 if role == "user":
                     conversation_html += f"<p style='margin: 8px 0;'><strong style='color: #2563eb;'>User:</strong> {content}</p>"
                 elif role == "assistant":
                     conversation_html += f"<p style='margin: 8px 0;'><strong style='color: #7c3aed;'>{bot_name}:</strong> {content}</p>"
             conversation_html += "</div>"
-
+        
         html_body = f"""
         <html>
         <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f3f4f6; padding: 20px;">
@@ -310,6 +347,7 @@ def send_lead_email(
                     <table style="width: 100%; border-collapse: collapse;">
                         {lead_rows}
                     </table>
+                    {ai_summary_html}
                     {conversation_html}
                 </div>
                 <div style="background: #f9fafb; padding: 16px; text-align: center; border-top: 1px solid #e5e7eb;">
@@ -331,6 +369,7 @@ Lead Details:
 - Email: {lead.email or 'Not provided'}
 - Phone: {lead.phone or 'Not provided'}
 - Company: {lead.company or 'Not provided'}
+{ai_summary_text_block}
 """
 
         msg.attach(MIMEText(text_body, "plain"))
