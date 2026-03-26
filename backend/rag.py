@@ -258,17 +258,10 @@ Interest in implementing or switching ERP systems
 "How do I get started?" or "Can your team help?"
 Questions about timelines or project scope
 
-When you detect buying interest, respond warmly and ask for any details not
-already known from the conversation (see Intelligence Layer 6 above):
-"That's great to hear! To connect you with the right {company_name} specialist,
-could I grab a few quick details?
-
-Your name
-Email address
-Contact number
-Company name
-
-Our team will get back to you shortly!"
+When you detect buying interest, respond warmly and append the special system marker [SHOW_LEAD_FORM] exactly as written at the end of your message.
+"That's great to hear! To connect you with the right {company_name} specialist, please fill out the quick form below so we can get in touch:
+[SHOW_LEAD_FORM]"
+Do not ask them to type their details manually in the chat layout, always use the [SHOW_LEAD_FORM] marker so the widget can render an interactive form.
 If the user declines to share certain details, respect that and continue
 with whatever they are comfortable providing.
 LOGGING CAPTURED LEADS
@@ -634,16 +627,23 @@ Do NOT provide references for Conversational messages, greetings, simple request
 
             chat = model.start_chat(history=gemini_history)
             response = chat.send_message(messages[-1]["content"], stream=True)
+            yielded_any = False
             for chunk in response:
-                if chunk.text:
-                    yield chunk.text
+                try:
+                    if chunk.text:
+                        yielded_any = True
+                        yield chunk.text
+                except Exception as chunk_e:
+                    logger.warning(f"Failed to extract text from chunk: {chunk_e}")
+                    continue
         except Exception as e:
             logger.error(f"Error streaming chat response: {str(e)}")
-            yield (
-                "I'm sorry, I'm having trouble responding right now. "
-                "Please try again in a moment, or contact our team directly at "
-                f"{self.support_email} or {self.support_phone}."
-            )
+            if "yielded_any" not in locals() or not yielded_any:
+                yield (
+                    "I'm sorry, I'm having trouble responding right now. "
+                    "Please try again in a moment, or contact our team directly at "
+                    f"{self.support_email} or {self.support_phone}."
+                )
 
     def _build_messages(
         self,

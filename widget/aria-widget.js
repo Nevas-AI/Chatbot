@@ -947,6 +947,85 @@
     scrollToBottom();
   }
 
+  // ─── Lead Form Integration ──────────────────────────────
+  function showLeadForm() {
+    var messagesEl = document.getElementById("aria-messages");
+    var formCard = document.createElement("div");
+    formCard.className = "aria-escalation-card"; // reuse escalation card styling
+    formCard.style.animation = "aria-msgSlide 0.4s ease";
+
+    // Create unique IDs to avoid conflicts if multiple forms appear
+    var formId = "lf_" + Date.now();
+
+    formCard.innerHTML = `
+      <div class="aria-escalation-title" style="margin-bottom:12px;">📝 Contact Details</div>
+      <div style="display: flex; flex-direction: column; gap: 10px;" id="aria-lead-form-${formId}">
+        <input type="text" id="lf-name-${formId}" placeholder="Your Name *" style="padding:10px 14px; border:1px solid var(--aria-border); border-radius:8px; font-family:var(--aria-font); font-size:14px; outline:none; background:var(--aria-bg-secondary); color:var(--aria-text);">
+        <input type="email" id="lf-email-${formId}" placeholder="Email Address *" style="padding:10px 14px; border:1px solid var(--aria-border); border-radius:8px; font-family:var(--aria-font); font-size:14px; outline:none; background:var(--aria-bg-secondary); color:var(--aria-text);">
+        <input type="tel" id="lf-phone-${formId}" placeholder="Contact Number" style="padding:10px 14px; border:1px solid var(--aria-border); border-radius:8px; font-family:var(--aria-font); font-size:14px; outline:none; background:var(--aria-bg-secondary); color:var(--aria-text);">
+        <input type="text" id="lf-company-${formId}" placeholder="Company Name" style="padding:10px 14px; border:1px solid var(--aria-border); border-radius:8px; font-family:var(--aria-font); font-size:14px; outline:none; background:var(--aria-bg-secondary); color:var(--aria-text);">
+        <button id="lf-btn-${formId}" style="margin-top:6px; padding:12px; background:linear-gradient(135deg, var(--aria-gradient-start), var(--aria-gradient-end)); color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:600; text-shadow:0 1px 2px rgba(0,0,0,0.1); box-shadow:0 4px 12px rgba(99, 102, 241, 0.25); transition:transform 0.2s;">
+          Submit Details
+        </button>
+      </div>
+    `;
+
+    messagesEl.appendChild(formCard);
+    scrollToBottom();
+
+    // Attach focus styles inline for styling resilience
+    var inputs = formCard.querySelectorAll('input');
+    inputs.forEach(function (input) {
+      input.addEventListener('focus', function () {
+        input.style.borderColor = 'var(--aria-primary)';
+        input.style.boxShadow = '0 0 0 3px rgba(99, 102, 241, 0.12)';
+      });
+      input.addEventListener('blur', function () {
+        input.style.borderColor = 'var(--aria-border)';
+        input.style.boxShadow = 'none';
+      });
+    });
+
+    var submitBtn = document.getElementById("lf-btn-" + formId);
+    submitBtn.addEventListener("click", function () {
+      submitBtn.style.transform = "scale(0.96)";
+      setTimeout(function () { submitBtn.style.transform = "none"; }, 150);
+
+      var name = document.getElementById("lf-name-" + formId).value.trim();
+      var email = document.getElementById("lf-email-" + formId).value.trim();
+      var phone = document.getElementById("lf-phone-" + formId).value.trim();
+      var company = document.getElementById("lf-company-" + formId).value.trim();
+
+      if (!name || (!email && !phone)) {
+        alert("Please provide your name and either an email or phone number.");
+        return;
+      }
+
+      // Display success message inside the form card
+      document.getElementById("aria-lead-form-" + formId).innerHTML = `
+        <div style="padding:8px 0; display:flex; gap:8px; align-items:center;">
+          <div style="color:#10b981; font-size:20px;">✅</div>
+          <div style="font-size:13.5px; color:var(--aria-text); font-weight:500;">
+            Thank you, ${escapeHtml(name)}. Your details have been submitted.
+          </div>
+        </div>
+      `;
+
+      // Build text submission string that matches regex logic in lead_capture.py
+      var submissionText = "Name: " + name + "\\n";
+      if (email) submissionText += "Email: " + email + "\\n";
+      if (phone) submissionText += "Phone: " + phone + "\\n";
+      if (company) submissionText += "Company: " + company + "\\n";
+
+      var inputBox = document.getElementById("aria-message-input");
+      var originalDisplay = inputBox.style.display;
+      inputBox.style.display = "block"; // Make sure it's accessible
+      inputBox.value = submissionText;
+      sendMessage();
+      inputBox.style.display = originalDisplay; // Revert visibility
+    });
+  }
+
   // ─── Typing Indicator ─────────────────────────────────
   function showTyping() {
     var messagesEl = document.getElementById("aria-messages");
@@ -1116,6 +1195,8 @@
               if (data.escalation_data) {
                 showEscalationCard(data.escalation_data);
               }
+            } else if (data.type === "show_lead_form") {
+              showLeadForm();
             } else if (data.type === "token") {
               if (!streamBubble) {
                 streamBubble = createStreamingMessage();

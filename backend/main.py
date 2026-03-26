@@ -1099,7 +1099,7 @@ async def chat(request: ChatRequest, req: Request):
         full_response = ""
         # Buffer for detecting lead markers before streaming to client
         stream_buffer = ""
-        marker_start_re = _re.compile(r"\[LEAD_")
+        marker_start_re = _re.compile(r"\[(LEAD_|SHOW_LEAD_FORM)")
 
         try:
             for token in rag_pipeline.chat_stream(request.message, history):
@@ -1169,6 +1169,9 @@ async def chat(request: ChatRequest, req: Request):
 
             add_to_history(session_id, "assistant", clean_response)
             await persist_message(session_id, "assistant", clean_response, "text", page_url=request.page_url, client_id=client_id)
+
+            if "[SHOW_LEAD_FORM]" in full_response:
+                yield f"data: {json.dumps({'type': 'show_lead_form', 'session_id': session_id})}\n\n"
 
             # ── Lead capture processing ──
             try:

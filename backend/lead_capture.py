@@ -95,7 +95,7 @@ PHONE_PATTERN = re.compile(
 )
 # Structured markers the AI uses in its responses
 LEAD_MARKER_PATTERN = re.compile(
-    r"\[LEAD_(NAME|EMAIL|PHONE|COMPANY):\s*(.+?)\]", re.IGNORECASE
+    r"\[(?:LEAD_(NAME|EMAIL|PHONE|COMPANY|CONTEXT):\s*(.+?)|SHOW_LEAD_FORM)\]", re.IGNORECASE
 )
 
 
@@ -118,7 +118,10 @@ def extract_lead_from_conversation(
         if msg.get("role") == "assistant":
             content = msg.get("content", "")
             for match in LEAD_MARKER_PATTERN.finditer(content):
-                field_name = match.group(1).upper()
+                field_name = match.group(1)
+                if not field_name:
+                    continue
+                field_name = field_name.upper()
                 value = match.group(2).strip()
                 if field_name == "NAME" and not lead.name:
                     lead.name = value
