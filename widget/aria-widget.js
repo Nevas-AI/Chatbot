@@ -951,21 +951,43 @@
   function showLeadForm() {
     var messagesEl = document.getElementById("aria-messages");
     var formCard = document.createElement("div");
-    formCard.className = "aria-escalation-card"; // reuse escalation card styling
-    formCard.style.animation = "aria-msgSlide 0.4s ease";
+
+    // Elegant form container styles
+    formCard.style.cssText = "background: var(--aria-bg); border: 1px solid var(--aria-border); border-radius: 16px; padding: 22px 20px; margin: 8px 0; box-shadow: 0 8px 24px rgba(0,0,0,0.06); animation: aria-msgSlide 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); display: flex; flex-direction: column; gap: 18px;";
 
     // Create unique IDs to avoid conflicts if multiple forms appear
     var formId = "lf_" + Date.now();
 
+    var inputStyle = "width: 100%; padding: 12px 14px; border: 1.5px solid var(--aria-border); border-radius: 10px; font-family: var(--aria-font); font-size: 14px; outline: none; background: var(--aria-bg); color: var(--aria-text); transition: all 0.2s ease;";
+
     formCard.innerHTML = `
-      <div class="aria-escalation-title" style="margin-bottom:12px;">📝 Contact Details</div>
-      <div style="display: flex; flex-direction: column; gap: 10px;" id="aria-lead-form-${formId}">
-        <input type="text" id="lf-name-${formId}" placeholder="Your Name *" style="padding:10px 14px; border:1px solid var(--aria-border); border-radius:8px; font-family:var(--aria-font); font-size:14px; outline:none; background:var(--aria-bg-secondary); color:var(--aria-text);">
-        <input type="email" id="lf-email-${formId}" placeholder="Email Address *" style="padding:10px 14px; border:1px solid var(--aria-border); border-radius:8px; font-family:var(--aria-font); font-size:14px; outline:none; background:var(--aria-bg-secondary); color:var(--aria-text);">
-        <input type="tel" id="lf-phone-${formId}" placeholder="Contact Number" style="padding:10px 14px; border:1px solid var(--aria-border); border-radius:8px; font-family:var(--aria-font); font-size:14px; outline:none; background:var(--aria-bg-secondary); color:var(--aria-text);">
-        <input type="text" id="lf-company-${formId}" placeholder="Company Name" style="padding:10px 14px; border:1px solid var(--aria-border); border-radius:8px; font-family:var(--aria-font); font-size:14px; outline:none; background:var(--aria-bg-secondary); color:var(--aria-text);">
-        <button id="lf-btn-${formId}" style="margin-top:6px; padding:12px; background:linear-gradient(135deg, var(--aria-gradient-start), var(--aria-gradient-end)); color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:600; text-shadow:0 1px 2px rgba(0,0,0,0.1); box-shadow:0 4px 12px rgba(99, 102, 241, 0.25); transition:transform 0.2s;">
+      <div style="text-align: center;">
+        <div style="display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: var(--aria-primary-light); color: var(--aria-primary); margin-bottom: 12px;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+          </svg>
+        </div>
+        <h3 style="margin: 0; font-size: 17px; font-weight: 600; color: var(--aria-text); letter-spacing: -0.01em;">Let's get in touch</h3>
+        <p style="margin: 6px 0 0; font-size: 13.5px; color: var(--aria-text-secondary); line-height: 1.5;">Please fill out this quick form so our team can follow up with you directly.</p>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 12px;" id="aria-lead-form-${formId}">
+        <div>
+          <input type="text" id="lf-name-${formId}" placeholder="Full Name *" style="${inputStyle}">
+        </div>
+        <div>
+          <input type="email" id="lf-email-${formId}" placeholder="Email Address *" style="${inputStyle}">
+        </div>
+        <div>
+          <input type="tel" id="lf-phone-${formId}" placeholder="Phone Number" style="${inputStyle}">
+        </div>
+        <div>
+          <input type="text" id="lf-company-${formId}" placeholder="Company Name" style="${inputStyle}">
+        </div>
+        
+        <button id="lf-btn-${formId}" style="margin-top: 8px; padding: 14px; background: linear-gradient(135deg, var(--aria-gradient-start), var(--aria-gradient-end)); color: #ffffff; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 14.5px; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.25); transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 8px;">
           Submit Details
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
         </button>
       </div>
     `;
@@ -978,17 +1000,39 @@
     inputs.forEach(function (input) {
       input.addEventListener('focus', function () {
         input.style.borderColor = 'var(--aria-primary)';
-        input.style.boxShadow = '0 0 0 3px rgba(99, 102, 241, 0.12)';
+        input.style.boxShadow = '0 0 0 3px var(--aria-primary-light)';
       });
       input.addEventListener('blur', function () {
         input.style.borderColor = 'var(--aria-border)';
         input.style.boxShadow = 'none';
       });
+      // Hover subtle effect
+      input.addEventListener('mouseenter', function () {
+        if (document.activeElement !== input) {
+          input.style.borderColor = '#c0c4cc';
+        }
+      });
+      input.addEventListener('mouseleave', function () {
+        if (document.activeElement !== input) {
+          input.style.borderColor = 'var(--aria-border)';
+        }
+      });
     });
 
     var submitBtn = document.getElementById("lf-btn-" + formId);
+
+    // Button hover effects
+    submitBtn.addEventListener("mouseenter", function () {
+      submitBtn.style.transform = "translateY(-1px)";
+      submitBtn.style.boxShadow = "0 6px 20px rgba(99, 102, 241, 0.35)";
+    });
+    submitBtn.addEventListener("mouseleave", function () {
+      submitBtn.style.transform = "none";
+      submitBtn.style.boxShadow = "0 4px 14px rgba(99, 102, 241, 0.25)";
+    });
+
     submitBtn.addEventListener("click", function () {
-      submitBtn.style.transform = "scale(0.96)";
+      submitBtn.style.transform = "scale(0.97)";
       setTimeout(function () { submitBtn.style.transform = "none"; }, 150);
 
       var name = document.getElementById("lf-name-" + formId).value.trim();
@@ -1003,10 +1047,15 @@
 
       // Display success message inside the form card
       document.getElementById("aria-lead-form-" + formId).innerHTML = `
-        <div style="padding:8px 0; display:flex; gap:8px; align-items:center;">
-          <div style="color:#10b981; font-size:20px;">✅</div>
-          <div style="font-size:13.5px; color:var(--aria-text); font-weight:500;">
-            Thank you, ${escapeHtml(name)}. Your details have been submitted.
+        <div style="padding: 16px 0 8px; display: flex; flex-direction: column; align-items: center; text-align: center; animation: aria-msgSlide 0.4s ease;">
+          <div style="width: 48px; height: 48px; border-radius: 50%; background: #10b981; color: white; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </div>
+          <div style="font-size: 15px; color: var(--aria-text); font-weight: 600; margin-bottom: 4px;">
+            Details Submitted Successfully
+          </div>
+          <div style="font-size: 13.5px; color: var(--aria-text-secondary); line-height: 1.5;">
+            Thank you, ${escapeHtml(name)}. We have received your information and will be in touch shortly.
           </div>
         </div>
       `;
