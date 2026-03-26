@@ -824,10 +824,11 @@
   function showWelcomeMessage() {
     addBotMessage("Hi! 👋 I'm " + CONFIG.botName + ", your ERP assistant at " + CONFIG.companyName + ". I can help you with Microsoft Dynamics 365, ERP solutions, and more. What would you like to know?");
     showQuickReplies([
-      "What is Business Central?",
-      "ERP implementation",
-      "Request a demo",
-      "Contact us",
+      "Looking to automate financial reporting?",
+      "Struggling with supply chain efficiency?",
+      "Interested in Dynamics 365 Business Central?",
+      "Need system integration or custom workflows?",
+      "Want to reduce operational costs?",
     ]);
   }
 
