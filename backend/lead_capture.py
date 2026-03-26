@@ -400,6 +400,110 @@ Lead Details:
         return False, error
 
 
+def send_thank_you_email(
+    sender_email: str,
+    sender_password: str,
+    lead: LeadData,
+    company_name: str = "Your Company",
+    bot_name: str = "Neva",
+    full_history: Optional[List[Dict]] = None,
+) -> tuple[bool, Optional[str]]:
+    """
+    Send a dynamic AI-generated thank you email to the captured lead.
+    """
+    if not lead.email:
+        return False, "No recipient email provided."
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = f"Thank you for reaching out to {company_name}"
+        msg["From"] = sender_email
+        msg["To"] = lead.email
+
+        # Generate AI Thank You message
+        thank_you_text_block = "Thank you for reaching out! We have received your details and our team will contact you shortly."
+        thank_you_html = f"<p style='color: #374151; font-size: 16px; line-height: 1.6;'>{thank_you_text_block}</p>"
+
+        if full_history:
+            try:
+                api_key = os.getenv("GEMINI_API_KEY")
+                if api_key:
+                    genai.configure(api_key=api_key)
+                    model = genai.GenerativeModel("gemini-2.5-flash")
+                    chat_text = "\n".join([f"{m.get('role', 'unknown').capitalize()}: {m.get('content', '')}" for m in full_history])
+                    
+                    prompt = (
+                        f"You are {bot_name}, an assistant for {company_name}.\n"
+                        f"A user named {lead.name or 'there'} has just provided their contact details to be contacted by sales/support.\n\n"
+                        f"Review the following chat history and write a warm, personalized 2-3 sentence 'Thank You' email body addressed to the user. "
+                        f"Acknowledge their specific needs based on the chat (e.g., 'Thank you for reaching out about upgrading your ERP system...'). "
+                        f"Assure them that a specialist from {company_name} will be in touch shortly.\n"
+                        f"Important: Do NOT include subject lines, placeholders, or email signatures (no 'Best regards, XYZ'). Just write the exact plain-text paragraphs to be used as the email body.\n\n"
+                        f"Chat History:\n{chat_text}\n\nEmail Body:"
+                    )
+                    
+                    response = model.generate_content(prompt)
+                    ai_text = response.text.strip()
+                    if ai_text:
+                        thank_you_text_block = ai_text
+                        html_formatted = ai_text.replace("\n", "<br>")
+                        thank_you_html = f"<p style='color: #374151; font-size: 16px; line-height: 1.6;'>{html_formatted}</p>"
+            except Exception as e:
+                logger.error(f"Failed to generate lead thank you message: {e}")
+
+        greeting = f"Hi {lead.name}," if lead.name else "Hi there,"
+
+        html_body = f"""
+        <html>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f3f4f6; padding: 20px;">
+            <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <div style="background: linear-gradient(135deg, #4f46e5, #7c3aed); padding: 32px 24px; text-align: center;">
+                    <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Thank You!</h1>
+                </div>
+                <div style="padding: 32px 24px;">
+                    <p style="color: #1f2937; font-size: 18px; font-weight: 500; margin-top: 0;">{greeting}</p>
+                    {thank_you_html}
+                    <p style="color: #6b7280; font-size: 14px; margin-top: 32px; border-top: 1px solid #e5e7eb; padding-top: 16px;">
+                        Best regards,<br>
+                        <strong>The {company_name} Team</strong>
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        text_body = f"""{greeting}
+
+{thank_you_text_block}
+
+Best regards,
+The {company_name} Team
+"""
+
+        msg.attach(MIMEText(text_body, "plain"))
+        msg.attach(MIMEText(html_body, "html"))
+
+        with smtplib.SMTP(GMAIL_SMTP_HOST, GMAIL_SMTP_PORT) as server:
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            server.login(sender_email, sender_password)
+            server.send_message(msg)
+
+        logger.info(f"✅ Thank you email sent to {lead.email} for lead: {lead.name}")
+        return True, None
+
+    except smtplib.SMTPAuthenticationError:
+        error = "Gmail authentication failed. Check email address and app password."
+        logger.error(f"❌ {error}")
+        return False, error
+    except Exception as e:
+        error = f"Thank you email sending failed: {str(e)}"
+        logger.error(f"❌ {error}")
+        return False, error
+
+
 def _email_row(label: str, value: str) -> str:
     """Build a table row for the HTML email."""
     return f"""

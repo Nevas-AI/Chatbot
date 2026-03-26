@@ -40,6 +40,7 @@ from models import Client, Conversation, Message, EscalationEvent, ChatUser, Lea
 from lead_capture import (
     extract_lead_from_conversation,
     send_lead_email,
+    send_thank_you_email,
     decrypt_password,
     LEAD_MARKER_PATTERN,
 )
@@ -747,6 +748,19 @@ async def _save_and_email_lead(
                     )
                     email_sent = success
                     email_error = err
+
+                    if lead_data.email:
+                        try:
+                            send_thank_you_email(
+                                sender_email=config["lead_email"],
+                                sender_password=decrypted_pwd,
+                                lead=lead_data,
+                                company_name=config.get("company_name", "Your Company"),
+                                bot_name=config.get("bot_name", "Neva"),
+                                full_history=full_history,
+                            )
+                        except Exception as thanks_err:
+                            logger.error(f"Failed to send thank you email: {thanks_err}")
                 except Exception as email_err:
                     email_error = str(email_err)
                     logger.error(f"Email sending failed: {email_err}")
