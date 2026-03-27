@@ -683,7 +683,164 @@
         #aria-chat-bubble {
           bottom: 18px;
           right: 18px;
-        }
+      /* ── Launcher UI ── */
+      #aria-launcher-ui {
+        position: fixed;
+        bottom: 28px;
+        right: 28px;
+        z-index: 999998;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 12px;
+        width: 380px;
+        max-width: calc(100vw - 32px);
+        font-family: var(--aria-font);
+        transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      #aria-launcher-ui.aria-hidden {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+        pointer-events: none;
+      }
+      @media (min-width: 481px) {
+        #aria-launcher-ui { width: 400px; }
+      }
+      
+      #aria-launcher-close {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--aria-bg);
+        border: 1px solid var(--aria-border);
+        color: var(--aria-text-secondary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        transition: all 0.2s;
+        margin-bottom: -4px;
+      }
+      #aria-launcher-close:hover {
+        background: var(--aria-bg-secondary);
+        color: var(--aria-text);
+        transform: rotate(90deg);
+      }
+
+      #aria-launcher-expanded-content {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        width: 100%;
+        transition: opacity 0.3s, max-height 0.3s;
+        overflow: hidden;
+        max-height: 500px;
+      }
+      #aria-launcher-expanded-content.aria-collapsed {
+        max-height: 0;
+        opacity: 0;
+        pointer-events: none;
+        margin: 0;
+      }
+
+      .aria-launcher-suggestion {
+        background: var(--aria-bg);
+        border: 1px solid var(--aria-border);
+        padding: 12px 16px;
+        border-radius: 20px;
+        font-size: 13.5px;
+        color: var(--aria-text);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        cursor: pointer;
+        text-align: left;
+        line-height: 1.4;
+        transition: all 0.2s;
+        width: 100%;
+        font-weight: 500;
+        outline: none;
+      }
+      .aria-launcher-suggestion:hover {
+        border-color: var(--aria-primary);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        transform: translateY(-1px);
+        color: var(--aria-primary);
+      }
+
+      #aria-launcher-disclaimer {
+        background: var(--aria-bg-secondary);
+        border: 1px solid var(--aria-border);
+        color: var(--aria-text-secondary);
+        font-size: 12px;
+        padding: 14px 16px;
+        border-radius: 12px;
+        line-height: 1.5;
+        width: 100%;
+      }
+
+      #aria-launcher-input-container {
+        display: flex;
+        align-items: center;
+        background: var(--aria-bg);
+        border: 1px solid var(--aria-border);
+        border-radius: 30px;
+        padding: 6px 10px 6px 20px;
+        width: 100%;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        transition: border-color 0.3s, box-shadow 0.3s;
+      }
+      #aria-launcher-input-container:focus-within {
+        border-color: var(--aria-primary);
+        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12), 0 0 0 3px rgba(99, 102, 241, 0.1);
+      }
+      #aria-launcher-sparkle {
+        color: var(--aria-text);
+        display: flex;
+        align-items: center;
+        margin-right: 12px;
+        flex-shrink: 0;
+      }
+      #aria-launcher-input {
+        flex: 1;
+        border: none;
+        background: transparent;
+        font-size: 14.5px;
+        color: var(--aria-text);
+        outline: none;
+        padding: 10px 0;
+        font-family: var(--aria-font);
+      }
+      #aria-launcher-input::placeholder {
+        color: var(--aria-text-secondary);
+      }
+      #aria-launcher-send {
+        background: transparent;
+        border: none;
+        color: var(--aria-text);
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        flex-shrink: 0;
+      }
+      #aria-launcher-send:hover {
+        background: var(--aria-bg-secondary);
+        color: var(--aria-primary);
+      }
+      #aria-launcher-send svg {
+        width: 20px;
+        height: 20px;
+        transform: rotate(45deg); 
+        margin-left: -2px;
+      }
+      
+      /* Hide regular bubble initially */
+      #aria-chat-bubble.aria-initially-hidden {
+        display: none !important;
       }
     `;
     document.head.appendChild(style);
@@ -699,6 +856,7 @@
     // Chat Bubble Button
     var bubble = document.createElement("button");
     bubble.id = "aria-chat-bubble";
+    bubble.classList.add("aria-initially-hidden");
     bubble.setAttribute("aria-label", "Open chat");
     bubble.innerHTML = `
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -742,7 +900,46 @@
       <div id="aria-powered">Powered by ${escapeHtml(CONFIG.botName)} AI</div>
     `;
 
+    // Launcher UI
+    var launcher = document.createElement("div");
+    launcher.id = "aria-launcher-ui";
+    var cName = escapeHtml(CONFIG.companyName);
+    launcher.innerHTML = `
+      <button id="aria-launcher-close" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+      
+      <div id="aria-launcher-expanded-content">
+        <button class="aria-launcher-suggestion">What energy-related software solutions does ${cName} provide?</button>
+        <button class="aria-launcher-suggestion">What industries does ${cName} serve with its software solutions?</button>
+        <button class="aria-launcher-suggestion">Does ${cName} offer software for fuel delivery and HVAC service?</button>
+        
+        <div id="aria-launcher-disclaimer">
+          By using this chat service, you agree to the monitoring and recording of the chat and the processing of your personal data in accordance with our Privacy Policy.
+        </div>
+      </div>
+      
+      <div id="aria-launcher-input-container">
+        <div id="aria-launcher-sparkle">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+          </svg>
+        </div>
+        <input type="text" id="aria-launcher-input" placeholder="Ask me anything..." autocomplete="off">
+        <button id="aria-launcher-send" aria-label="Send">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </div>
+    `;
+
     container.appendChild(chatWindow);
+    container.appendChild(launcher);
     container.appendChild(bubble);
     document.body.appendChild(container);
   }
@@ -792,16 +989,75 @@
       this.style.height = "auto";
       this.style.height = Math.min(this.scrollHeight, 82) + "px";
     });
+
+    // ─── Launcher Events ───
+    var launcherUi = document.getElementById("aria-launcher-ui");
+    var launcherClose = document.getElementById("aria-launcher-close");
+    var launcherExp = document.getElementById("aria-launcher-expanded-content");
+    var launcherInput = document.getElementById("aria-launcher-input");
+    var launcherSend = document.getElementById("aria-launcher-send");
+    var launcherSugs = document.querySelectorAll(".aria-launcher-suggestion");
+
+    if (launcherClose) {
+      launcherClose.addEventListener("click", function (e) {
+        e.stopPropagation();
+        if (launcherExp && !launcherExp.classList.contains("aria-collapsed")) {
+          launcherExp.classList.add("aria-collapsed");
+        } else {
+          launcherUi.classList.add("aria-hidden");
+          bubble.classList.remove("aria-initially-hidden");
+          bubble.style.display = "flex";
+        }
+      });
+    }
+
+    function triggerFromLauncher(text) {
+      if (!text) return;
+      input.value = text;
+      input.style.height = "auto";
+      if (!isOpen) toggleChat();
+      sendMessage();
+    }
+
+    if (launcherSend) {
+      launcherSend.addEventListener("click", function() {
+        var text = launcherInput.value.trim();
+        launcherInput.value = "";
+        triggerFromLauncher(text);
+      });
+    }
+
+    if (launcherInput) {
+      launcherInput.addEventListener("keydown", function(e) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          var text = launcherInput.value.trim();
+          launcherInput.value = "";
+          triggerFromLauncher(text);
+        }
+      });
+    }
+
+    if (launcherSugs) {
+      launcherSugs.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          triggerFromLauncher(btn.textContent.trim());
+        });
+      });
+    }
   }
 
   function toggleChat() {
     isOpen = !isOpen;
     var chatWindow = document.getElementById("aria-chat-window");
     var bubble = document.getElementById("aria-chat-bubble");
+    var launcherUi = document.getElementById("aria-launcher-ui");
 
     if (isOpen) {
       chatWindow.classList.add("aria-visible");
       bubble.classList.add("aria-open");
+      bubble.style.display = "none";
+      if (launcherUi) launcherUi.classList.add("aria-hidden");
       clearUnread();
 
       // Show welcome message on first open
@@ -817,6 +1073,14 @@
     } else {
       chatWindow.classList.remove("aria-visible");
       bubble.classList.remove("aria-open");
+      if (launcherUi) {
+        launcherUi.classList.remove("aria-hidden");
+        // Optionally expand it again when closing chat
+        var launcherExp = document.getElementById("aria-launcher-expanded-content");
+        if (launcherExp) launcherExp.classList.remove("aria-collapsed");
+      } else {
+        bubble.style.display = "flex";
+      }
     }
   }
 
