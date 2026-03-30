@@ -722,7 +722,7 @@
         background: var(--aria-bg);
         border: 1px solid var(--aria-border);
         color: var(--aria-text-secondary);
-        display: flex;
+        display: none;
         align-items: center;
         justify-content: center;
         cursor: pointer;
@@ -741,15 +741,24 @@
         flex-direction: column;
         gap: 12px;
         width: 100%;
-        transition: opacity 0.3s, max-height 0.3s;
+        transition: opacity 0.35s ease, max-height 0.4s ease, margin 0.3s ease;
         overflow: hidden;
-        max-height: 500px;
-      }
-      #aria-launcher-expanded-content.aria-collapsed {
         max-height: 0;
         opacity: 0;
         pointer-events: none;
         margin: 0;
+      }
+      #aria-launcher-ui.aria-expanded #aria-launcher-expanded-content {
+        max-height: 500px;
+        opacity: 1;
+        pointer-events: all;
+        margin-bottom: 0;
+      }
+      #aria-launcher-expanded-content.aria-collapsed {
+        max-height: 0 !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        margin: 0 !important;
       }
 
       .aria-launcher-suggestion {
@@ -790,7 +799,7 @@
         display: flex;
         align-items: center;
         background: var(--aria-bg);
-        border: 1px solid var(--aria-border);
+        border: 1.5px solid var(--aria-primary);
         border-radius: 30px;
         padding: 6px 10px 6px 20px;
         width: 100%;
@@ -798,11 +807,11 @@
         transition: border-color 0.3s, box-shadow 0.3s;
       }
       #aria-launcher-input-container:focus-within {
-        border-color: var(--aria-primary);
-        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12), 0 0 0 3px rgba(99, 102, 241, 0.1);
+        border-color: var(--aria-primary-hover);
+        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12), 0 0 0 3px var(--aria-primary-light);
       }
       #aria-launcher-sparkle {
-        color: var(--aria-text);
+        color: var(--aria-primary);
         display: flex;
         align-items: center;
         margin-right: 12px;
@@ -824,7 +833,7 @@
       #aria-launcher-send {
         background: transparent;
         border: none;
-        color: var(--aria-text);
+        color: var(--aria-primary);
         width: 38px;
         height: 38px;
         border-radius: 50%;
@@ -836,8 +845,8 @@
         flex-shrink: 0;
       }
       #aria-launcher-send:hover {
-        background: var(--aria-bg-secondary);
-        color: var(--aria-primary);
+        background: var(--aria-primary-light);
+        color: var(--aria-primary-hover);
       }
       #aria-launcher-send svg {
         width: 20px;
@@ -1006,13 +1015,24 @@
     var launcherSend = document.getElementById("aria-launcher-send");
     var launcherSugs = document.querySelectorAll(".aria-launcher-suggestion");
 
+    // Show suggestions on hover or focus of the launcher
+    if (launcherUi && launcherInput) {
+      function expandLauncher() {
+        launcherUi.classList.add("aria-expanded");
+        if (launcherClose) launcherClose.style.display = "flex";
+        if (launcherExp) launcherExp.classList.remove("aria-collapsed");
+      }
+      launcherInput.addEventListener("focus", expandLauncher);
+      launcherUi.addEventListener("mouseenter", expandLauncher);
+    }
+
     if (launcherClose) {
       launcherClose.addEventListener("click", function (e) {
         e.stopPropagation();
-        if (launcherExp) {
-          launcherExp.classList.add("aria-collapsed");
-        }
+        launcherUi.classList.remove("aria-expanded");
+        if (launcherExp) launcherExp.classList.add("aria-collapsed");
         launcherClose.style.display = "none";
+        launcherInput.blur();
       });
     }
 
