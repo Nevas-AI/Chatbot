@@ -762,12 +762,12 @@
       }
 
       .aria-launcher-suggestion {
-        background: var(--aria-bg);
+        background: var(--aria-primary);
         border: 1.5px solid var(--aria-primary);
-        padding: 14px 20px;
+        padding: 14px 20px !important;
         border-radius: 20px;
         font-size: 13.5px;
-        color: var(--aria-text);
+        color: var(--aria-bg);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         cursor: pointer;
         text-align: left;
@@ -778,17 +778,17 @@
         outline: none;
       }
       .aria-launcher-suggestion:hover {
-        background: var(--aria-primary);
-        border-color: var(--aria-primary);
+        background: var(--aria-bg);
+        border-color: var(--aria-bg);
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
         transform: translateY(-1px);
-        color: #ffffff;
+        color: var(--aria-text);
       }
 
       #aria-launcher-disclaimer {
-        background: var(--aria-bg-secondary);
-        border: 1px solid var(--aria-border);
-        color: var(--aria-text-secondary);
+        background: var(--aria-primary);
+        border: 1px solid var(--aria-primary);
+        color: var(--aria-bg);
         font-size: 12px;
         padding: 16px 20px;
         border-radius: 14px;
