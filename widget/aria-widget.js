@@ -763,8 +763,8 @@
 
       .aria-launcher-suggestion {
         background: var(--aria-bg);
-        border: 1px solid var(--aria-border);
-        padding: 12px 16px;
+        border: 1.5px solid var(--aria-primary);
+        padding: 14px 20px;
         border-radius: 20px;
         font-size: 13.5px;
         color: var(--aria-text);
@@ -778,10 +778,11 @@
         outline: none;
       }
       .aria-launcher-suggestion:hover {
+        background: var(--aria-primary);
         border-color: var(--aria-primary);
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
         transform: translateY(-1px);
-        color: var(--aria-primary);
+        color: #ffffff;
       }
 
       #aria-launcher-disclaimer {
@@ -789,8 +790,8 @@
         border: 1px solid var(--aria-border);
         color: var(--aria-text-secondary);
         font-size: 12px;
-        padding: 14px 16px;
-        border-radius: 12px;
+        padding: 16px 20px;
+        border-radius: 14px;
         line-height: 1.5;
         width: 100%;
       }
@@ -1022,8 +1023,21 @@
         if (launcherClose) launcherClose.style.display = "flex";
         if (launcherExp) launcherExp.classList.remove("aria-collapsed");
       }
+      function collapseLauncher() {
+        if (launcherInput.value.trim() === "" && document.activeElement !== launcherInput) {
+          launcherUi.classList.remove("aria-expanded");
+          if (launcherExp) launcherExp.classList.add("aria-collapsed");
+          if (launcherClose) launcherClose.style.display = "none";
+        }
+      }
       launcherInput.addEventListener("focus", expandLauncher);
+      launcherInput.addEventListener("blur", function() {
+        setTimeout(collapseLauncher, 200);
+      });
       launcherUi.addEventListener("mouseenter", expandLauncher);
+      launcherUi.addEventListener("mouseleave", function() {
+        setTimeout(collapseLauncher, 300);
+      });
     }
 
     if (launcherClose) {
