@@ -683,6 +683,14 @@
         #aria-chat-bubble {
           bottom: 18px;
           right: 18px;
+        }
+        #aria-launcher-ui {
+          width: calc(100vw - 32px);
+          right: 16px;
+          bottom: 18px;
+        }
+      }
+
       /* ── Launcher UI ── */
       #aria-launcher-ui {
         position: fixed;
@@ -1075,6 +1083,8 @@
         // Optionally expand it again when closing chat
         var launcherExp = document.getElementById("aria-launcher-expanded-content");
         if (launcherExp) launcherExp.classList.remove("aria-collapsed");
+        var launcherCloseBtn = document.getElementById("aria-launcher-close");
+        if (launcherCloseBtn) launcherCloseBtn.style.display = "flex";
       } else {
         bubble.style.display = "flex";
       }
