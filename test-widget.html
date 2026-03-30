@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Widget Test</title>
+    <style>
+        body { background: #f0f0f0; margin: 0; padding: 20px; font-family: sans-serif; }
+        .dummy-content { height: 2000px; }
+    </style>
+</head>
+<body>
+    <h1>Widget Test Page</h1>
+    <div class="dummy-content">Scrollable content to simulate a real page...</div>
+
+    <script>
+        window.NevaConfig = {
+            apiUrl: "http://localhost:8000",
+            companyName: "TestCorp",
+            botName: "TestBot",
+            primaryColor: "#22c55e"
+        };
+    </script>
+    <script src="./widget/aria-widget.js"></script>
+</body>
+</html>

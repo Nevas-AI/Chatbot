@@ -913,9 +913,9 @@
       </button>
       
       <div id="aria-launcher-expanded-content">
-        <button class="aria-launcher-suggestion">What energy-related software solutions does ${cName} provide?</button>
-        <button class="aria-launcher-suggestion">What industries does ${cName} serve with its software solutions?</button>
-        <button class="aria-launcher-suggestion">Does ${cName} offer software for fuel delivery and HVAC service?</button>
+        <button class="aria-launcher-suggestion">Interested in Dynamics 365 Business Central?</button>
+        <button class="aria-launcher-suggestion">Need system integration or custom workflows?</button>
+        <button class="aria-launcher-suggestion">Want to reduce operational costs?</button>
         
         <div id="aria-launcher-disclaimer">
           By using this chat service, you agree to the monitoring and recording of the chat and the processing of your personal data in accordance with our Privacy Policy.
@@ -1001,13 +1001,10 @@
     if (launcherClose) {
       launcherClose.addEventListener("click", function (e) {
         e.stopPropagation();
-        if (launcherExp && !launcherExp.classList.contains("aria-collapsed")) {
+        if (launcherExp) {
           launcherExp.classList.add("aria-collapsed");
-        } else {
-          launcherUi.classList.add("aria-hidden");
-          bubble.classList.remove("aria-initially-hidden");
-          bubble.style.display = "flex";
         }
+        launcherClose.style.display = "none";
       });
     }
 
