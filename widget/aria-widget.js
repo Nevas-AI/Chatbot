@@ -981,23 +981,25 @@
     sendBtn.addEventListener("click", sendMessage);
     newChatBtn.addEventListener("click", startNewChat);
 
-    humanBtn.addEventListener("click", function () {
-      humanBtn.style.display = "none";
-      addUserMessage("I want to speak with human support");
-      showTyping();
-      var sendBtn = document.getElementById("aria-send-btn");
-      sendBtn.disabled = true;
+    if (humanBtn) {
+      humanBtn.addEventListener("click", function () {
+        humanBtn.style.display = "none";
+        addUserMessage("I want to speak with human support");
+        showTyping();
+        var sendBtn = document.getElementById("aria-send-btn");
+        sendBtn.disabled = true;
 
-      streamChat("/connect_human_support_now")
-        .catch(function (err) {
-          console.error("Aria chat error:", err);
-          hideTyping();
-          addBotMessage("I'm sorry, I'm having trouble connecting. Please try again later.");
-        })
-        .finally(function () {
-          sendBtn.disabled = false;
-        });
-    });
+        streamChat("/connect_human_support_now")
+          .catch(function (err) {
+            console.error("Aria chat error:", err);
+            hideTyping();
+            addBotMessage("I'm sorry, I'm having trouble connecting. Please try again later.");
+          })
+          .finally(function () {
+            sendBtn.disabled = false;
+          });
+      });
+    }
 
     // Send on Enter (Shift+Enter for new line)
     input.addEventListener("keydown", function (e) {
