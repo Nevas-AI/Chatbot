@@ -423,6 +423,7 @@ cd /var/www/neva-chatbot/dashboard && npm install && npm run build
 
 # Restart
 sudo systemctl restart neva-backend
+sudo systemctl reload nginx
 ```
 
 ### Option B: One-command deploy script (recommended)

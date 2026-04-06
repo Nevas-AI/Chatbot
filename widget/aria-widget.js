@@ -404,6 +404,8 @@
         display: flex;
         flex-direction: column;
         gap: 5px;
+        min-width: 0;
+        overflow: hidden;
       }
       .aria-msg-bubble {
         padding: 12px 16px !important;
@@ -413,8 +415,12 @@
         color: var(--aria-text);
         word-wrap: break-word;
         overflow-wrap: break-word;
+        word-break: break-word;
         white-space: pre-wrap;
         letter-spacing: 0.01em;
+      }
+      .aria-msg-bubble a {
+        word-break: break-all;
       }
       .aria-bot .aria-msg-bubble {
         background: var(--aria-bg-message);
@@ -904,7 +910,6 @@
         </button>
       </div>
       <div id="aria-messages"></div>
-      <button id="aria-human-btn">Speak with human support</button>
       
       <div id="aria-input-bar">
         <textarea id="aria-message-input" placeholder="Type your message..." rows="1"></textarea>
@@ -1031,11 +1036,11 @@
         }
       }
       launcherInput.addEventListener("focus", expandLauncher);
-      launcherInput.addEventListener("blur", function() {
+      launcherInput.addEventListener("blur", function () {
         setTimeout(collapseLauncher, 200);
       });
       launcherUi.addEventListener("mouseenter", expandLauncher);
-      launcherUi.addEventListener("mouseleave", function() {
+      launcherUi.addEventListener("mouseleave", function () {
         setTimeout(collapseLauncher, 300);
       });
     }
@@ -1059,7 +1064,7 @@
     }
 
     if (launcherSend) {
-      launcherSend.addEventListener("click", function() {
+      launcherSend.addEventListener("click", function () {
         var text = launcherInput.value.trim();
         launcherInput.value = "";
         triggerFromLauncher(text);
@@ -1067,7 +1072,7 @@
     }
 
     if (launcherInput) {
-      launcherInput.addEventListener("keydown", function(e) {
+      launcherInput.addEventListener("keydown", function (e) {
         if (e.key === "Enter") {
           e.preventDefault();
           var text = launcherInput.value.trim();
@@ -1182,6 +1187,14 @@
   }
 
   function formatMessage(text) {
+    // Strip internal lead markers before display
+    text = text.replace(/\[LEAD_NAME:[^\]]*\]/g, "");
+    text = text.replace(/\[LEAD_EMAIL:[^\]]*\]/g, "");
+    text = text.replace(/\[LEAD_PHONE:[^\]]*\]/g, "");
+    text = text.replace(/\[LEAD_COMPANY:[^\]]*\]/g, "");
+    text = text.replace(/\[LEAD_CONTEXT:[^\]]*\]/g, "");
+    text = text.trim();
+
     // Basic markdown-like formatting
     var escaped = escapeHtml(text);
     // Bold: **text**
@@ -1366,10 +1379,10 @@
       `;
 
       // Build text submission string that matches regex logic in lead_capture.py
-      var submissionText = "Name: " + name + "\\n";
-      if (email) submissionText += "Email: " + email + "\\n";
-      if (phone) submissionText += "Phone: " + phone + "\\n";
-      if (company) submissionText += "Company: " + company + "\\n";
+      var submissionText = "Name: " + name + "\n";
+      if (email) submissionText += "Email: " + email + "\n";
+      if (phone) submissionText += "Phone: " + phone + "\n";
+      if (company) submissionText += "Company: " + company + "\n";
 
       var inputBox = document.getElementById("aria-message-input");
       var originalDisplay = inputBox.style.display;
