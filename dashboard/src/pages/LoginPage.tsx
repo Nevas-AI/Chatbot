@@ -50,12 +50,12 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         padding: '40px',
         borderRadius: '12px',
         border: '1px solid var(--color-border)',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
         width: '100%',
         maxWidth: '400px',
         textAlign: 'center'
       }}>
-        <h1 style={{ color: 'var(--color-text)', marginBottom: '8px', fontSize: '24px' }}>Dashboard Login</h1>
+        <h1 style={{ color: 'var(--color-text-primary)', marginBottom: '8px', fontSize: '24px' }}>Ascent IQ Dashboard</h1>
         <p style={{ color: 'var(--color-text-muted)', marginBottom: '32px', fontSize: '14px' }}>Internal Access Only</p>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

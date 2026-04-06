@@ -21,13 +21,13 @@ export default function DashboardPage() {
 
   const cards = stats
     ? [
-        { label: 'Total Conversations', value: stats.total_conversations, icon: MessageSquare, color: '#6366f1' },
-        { label: 'Active Now', value: stats.active_conversations, icon: Radio, color: '#22c55e' },
-        { label: 'Escalations Today', value: stats.escalations_today, icon: AlertTriangle, color: '#ef4444' },
-        { label: 'Avg Messages', value: stats.avg_messages_per_conversation, icon: TrendingUp, color: '#f59e0b' },
-        { label: 'Today\'s Convos', value: stats.conversations_today, icon: Calendar, color: '#3b82f6' },
-        { label: 'Total Users', value: stats.total_users, icon: Users, color: '#8b5cf6' },
-      ]
+      { label: 'Total Conversations', value: stats.total_conversations, icon: MessageSquare, color: '#65bc47' },
+      { label: 'Active Now', value: stats.active_conversations, icon: Radio, color: '#22c55e' },
+      { label: 'Escalations Today', value: stats.escalations_today, icon: AlertTriangle, color: '#ef4444' },
+      { label: 'Avg Messages', value: stats.avg_messages_per_conversation, icon: TrendingUp, color: '#f59e0b' },
+      { label: 'Today\'s Convos', value: stats.conversations_today, icon: Calendar, color: '#3b82f6' },
+      { label: 'Total Users', value: stats.total_users, icon: Users, color: '#8b5cf6' },
+    ]
     : [];
 
   return (
@@ -40,25 +40,25 @@ export default function DashboardPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16, marginBottom: 32 }}>
         {statsLoading
           ? Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="glass-card" style={{ padding: 24, height: 110 }}>
-                <div className="spinner" />
-              </div>
-            ))
+            <div key={i} className="glass-card" style={{ padding: 24, height: 110 }}>
+              <div className="spinner" />
+            </div>
+          ))
           : cards.map(({ label, value, icon: Icon, color }) => (
-              <div key={label} className="glass-card" style={{ padding: 24 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>
-                      {label}
-                    </div>
-                    <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>{value}</div>
+            <div key={label} className="glass-card" style={{ padding: 24 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>
+                    {label}
                   </div>
-                  <div style={{ background: `${color}20`, borderRadius: 10, padding: 10 }}>
-                    <Icon size={20} style={{ color }} />
-                  </div>
+                  <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>{value}</div>
+                </div>
+                <div style={{ background: `${color}20`, borderRadius: 10, padding: 10 }}>
+                  <Icon size={20} style={{ color }} />
                 </div>
               </div>
-            ))}
+            </div>
+          ))}
       </div>
 
       {/* Active Conversations */}

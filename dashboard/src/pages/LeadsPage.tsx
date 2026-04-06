@@ -58,7 +58,7 @@ export default function LeadsPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <div>
                     <h1 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <Users size={24} style={{ color: '#6366f1' }} /> Captured Leads
+                        <Users size={24} style={{ color: '#65bc47' }} /> Captured Leads
                     </h1>
                     <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
                         Leads automatically captured by your chatbot from interested visitors.
@@ -71,9 +71,9 @@ export default function LeadsPage() {
                             className="btn"
                             onClick={() => setFilter(f)}
                             style={{
-                                background: filter === f ? '#6366f1' : 'var(--color-bg-secondary)',
+                                background: filter === f ? '#65bc47' : 'var(--color-bg-secondary)',
                                 color: filter === f ? '#fff' : 'var(--color-text)',
-                                border: filter === f ? '1px solid #6366f1' : '1px solid var(--color-border)',
+                                border: filter === f ? '1px solid #65bc47' : '1px solid var(--color-border)',
                                 fontSize: '0.8rem',
                                 padding: '6px 14px',
                                 borderRadius: 8,
@@ -116,13 +116,13 @@ export default function LeadsPage() {
                                 <tr key={lead.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
                                     <td style={{ padding: '12px 16px', fontWeight: 500 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <Users size={14} style={{ color: '#6366f1' }} />
+                                            <Users size={14} style={{ color: '#65bc47' }} />
                                             {lead.name || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>—</span>}
                                         </div>
                                     </td>
                                     <td style={{ padding: '12px 16px' }}>
                                         {lead.email ? (
-                                            <a href={`mailto:${lead.email}`} style={{ color: '#6366f1', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <a href={`mailto:${lead.email}`} style={{ color: '#65bc47', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
                                                 <Mail size={14} /> {lead.email}
                                             </a>
                                         ) : (
@@ -131,7 +131,7 @@ export default function LeadsPage() {
                                     </td>
                                     <td style={{ padding: '12px 16px' }}>
                                         {lead.phone ? (
-                                            <a href={`tel:${lead.phone}`} style={{ color: '#6366f1', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <a href={`tel:${lead.phone}`} style={{ color: '#65bc47', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
                                                 <Phone size={14} /> {lead.phone}
                                             </a>
                                         ) : (

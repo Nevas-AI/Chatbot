@@ -90,7 +90,7 @@ export default function LiveChatPage() {
             <Radio size={48} />
             <p style={{ marginTop: 12, fontSize: '1rem' }}>No active conversations</p>
             <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-              Conversations will appear here in real-time as users chat with Aria
+              Conversations will appear here in real-time as users chat with Ascent IQ
             </p>
           </div>
         </div>

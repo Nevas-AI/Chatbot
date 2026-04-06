@@ -31,9 +31,9 @@ export default function Sidebar() {
     <aside className="sidebar">
       {/* Logo */}
       <div style={{ padding: '24px 20px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-        <Sparkles size={22} style={{ color: '#6366f1' }} />
+        <Sparkles size={22} style={{ color: '#65bc47' }} />
         <span className="gradient-text" style={{ fontSize: '1.15rem', fontWeight: 700, letterSpacing: '-0.02em' }}>
-          Neva Dashboard
+          Ascent IQ
         </span>
       </div>
 
@@ -103,7 +103,7 @@ export default function Sidebar() {
 
       {/* Footer */}
       <div style={{ padding: '16px 20px', borderTop: '1px solid var(--color-border)', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-        Neva Chatbot v2.0
+        Ascent IQ v2.0
       </div>
     </aside>
   );

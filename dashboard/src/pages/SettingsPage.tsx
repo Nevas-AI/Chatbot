@@ -88,7 +88,7 @@ export default function SettingsPage() {
                   type="checkbox"
                   checked={hours[day].enabled}
                   onChange={() => toggleDay(day)}
-                  style={{ accentColor: '#6366f1', width: 16, height: 16 }}
+                  style={{ accentColor: '#65bc47', width: 16, height: 16 }}
                 />
                 <span style={{ fontSize: '0.9rem', fontWeight: 500, color: hours[day].enabled ? 'var(--color-text-primary)' : 'var(--color-text-muted)' }}>
                   {day}

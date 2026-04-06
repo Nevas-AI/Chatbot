@@ -1,23 +1,23 @@
 @import "tailwindcss";
 
 /* ─────────────────────────────────────────────
-   Design System — Aria Dashboard
-   Dark theme with glassmorphism
+   Design System — Ascent IQ Dashboard
+   Light theme with #65bc47 accent
    ───────────────────────────────────────────── */
 
 @theme {
-  --color-bg-primary: #0a0e1a;
-  --color-bg-secondary: #111827;
-  --color-bg-card: rgba(17, 24, 39, 0.7);
-  --color-bg-glass: rgba(255, 255, 255, 0.03);
-  --color-border: rgba(255, 255, 255, 0.08);
-  --color-border-hover: rgba(255, 255, 255, 0.15);
-  --color-text-primary: #f1f5f9;
-  --color-text-secondary: #94a3b8;
-  --color-text-muted: #64748b;
-  --color-accent: #6366f1;
-  --color-accent-hover: #818cf8;
-  --color-accent-glow: rgba(99, 102, 241, 0.25);
+  --color-bg-primary: #f5f7fa;
+  --color-bg-secondary: #ffffff;
+  --color-bg-card: rgba(255, 255, 255, 0.9);
+  --color-bg-glass: rgba(0, 0, 0, 0.02);
+  --color-border: rgba(0, 0, 0, 0.08);
+  --color-border-hover: rgba(0, 0, 0, 0.15);
+  --color-text-primary: #1e293b;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94a3b8;
+  --color-accent: #65bc47;
+  --color-accent-hover: #78c95e;
+  --color-accent-glow: rgba(101, 188, 71, 0.25);
   --color-success: #22c55e;
   --color-warning: #f59e0b;
   --color-danger: #ef4444;
@@ -57,11 +57,11 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.12);
   border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.2);
 }
 
 /* ─── Utilities ─── */
@@ -70,16 +70,16 @@ body {
   background: var(--color-bg-card);
   border: 1px solid var(--color-border);
   border-radius: 16px;
-  backdrop-filter: blur(12px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .glass-card:hover {
   border-color: var(--color-border-hover);
-  box-shadow: 0 0 20px rgba(99, 102, 241, 0.06);
+  box-shadow: 0 4px 16px rgba(101, 188, 71, 0.08);
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, #6366f1, #a78bfa, #818cf8);
+  background: linear-gradient(135deg, #65bc47, #4da832, #78c95e);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -109,8 +109,8 @@ body {
   to { opacity: 1; transform: translateX(0); }
 }
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 8px rgba(99, 102, 241, 0.2); }
-  50% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.4); }
+  0%, 100% { box-shadow: 0 0 8px rgba(101, 188, 71, 0.2); }
+  50% { box-shadow: 0 0 20px rgba(101, 188, 71, 0.4); }
 }
 
 .animate-fade-in {
@@ -152,12 +152,12 @@ body {
   transition: all 0.2s ease;
 }
 .sidebar-link:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(101, 188, 71, 0.06);
   color: var(--color-text-primary);
 }
 .sidebar-link.active {
   background: var(--color-accent-glow);
-  color: var(--color-accent-hover);
+  color: #4a9a32;
 }
 
 /* ─── Chat bubbles ─── */
@@ -177,7 +177,7 @@ body {
   align-self: flex-end;
 }
 .chat-bubble.assistant {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.03);
   border: 1px solid var(--color-border);
   border-bottom-left-radius: 4px;
   align-self: flex-start;
@@ -234,7 +234,7 @@ body {
 /* ─── Inputs ─── */
 
 .input {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--color-bg-primary);
   border: 1px solid var(--color-border);
   border-radius: 10px;
   padding: 10px 14px;
@@ -292,14 +292,14 @@ body {
 .data-table td {
   padding: 14px 16px;
   font-size: 0.875rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
   color: var(--color-text-secondary);
 }
 .data-table tr {
   transition: background 0.15s ease;
 }
 .data-table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(101, 188, 71, 0.04);
 }
 .data-table tbody tr {
   cursor: pointer;

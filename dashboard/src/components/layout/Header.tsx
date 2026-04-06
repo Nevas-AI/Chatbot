@@ -15,7 +15,7 @@ export default function Header() {
         justifyContent: 'space-between',
         padding: '0 28px',
         borderBottom: '1px solid var(--color-border)',
-        background: 'rgba(10, 14, 26, 0.6)',
+        background: 'rgba(255, 255, 255, 0.85)',
         backdropFilter: 'blur(12px)',
         position: 'sticky',
         top: 0,

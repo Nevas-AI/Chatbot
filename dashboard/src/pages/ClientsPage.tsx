@@ -6,8 +6,8 @@ import { Plus, Edit2, Trash2, Globe, Mail, Phone, Clock, Palette, Save, X, Send,
 const emptyForm: ClientCreateInput = {
   name: '',
   slug: '',
-  bot_name: 'Neva',
-  primary_color: '#6366F1',
+  bot_name: 'Ascent IQ',
+  primary_color: '#65bc47',
   welcome_msg: '',
   logo_url: '',
   company_name: '',
@@ -189,7 +189,7 @@ export default function ClientsPage() {
               <label style={{ display: 'block', marginBottom: 6, fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
                 Bot Name
               </label>
-              <input className="input" value={form.bot_name} onChange={(e) => handleChange('bot_name', e.target.value)} placeholder="Neva" />
+              <input className="input" value={form.bot_name} onChange={(e) => handleChange('bot_name', e.target.value)} placeholder="Ascent IQ" />
             </div>
             <div>
               <label style={{ display: 'block', marginBottom: 6, fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
@@ -322,7 +322,7 @@ export default function ClientsPage() {
           {/* Email Settings Section */}
           <div style={{ marginTop: 24, borderTop: '1px solid var(--color-border)', paddingTop: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <Mail size={18} style={{ color: '#6366f1' }} />
+              <Mail size={18} style={{ color: '#65bc47' }} />
               <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Lead Email Notifications</h3>
               <button
                 type="button"
