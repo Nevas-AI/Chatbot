@@ -9,6 +9,7 @@ import UsersPage from './pages/UsersPage';
 import SettingsPage from './pages/SettingsPage';
 import ClientsPage from './pages/ClientsPage';
 import LeadsPage from './pages/LeadsPage';
+import SocialMediaPage from './pages/SocialMediaPage';
 import LoginPage from './pages/LoginPage';
 import { ClientProvider } from './contexts/ClientContext';
 
@@ -29,6 +30,7 @@ function AppRoutes({ onLogout }: { onLogout: () => void }) {
           <Route path="/users" element={<UsersPage />} />
           <Route path="/clients" element={<ClientsPage />} />
           <Route path="/leads" element={<LeadsPage />} />
+          <Route path="/social" element={<SocialMediaPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Routes>

@@ -261,3 +261,51 @@ export const deleteClientLogo = (clientId: string) =>
   request<{ status: string }>(`/api/dashboard/clients/${clientId}/logo`, {
     method: 'DELETE',
   });
+
+/* ─── Social Media Posts ─── */
+
+export interface SocialPost {
+  id: string;
+  client_id: string;
+  platform: string;
+  post_url: string;
+  content: string;
+  caption: string | null;
+  is_active: boolean;
+  ingested: boolean;
+  created_at: string;
+}
+
+export interface SocialPostCreateInput {
+  client_id: string;
+  platform: string;
+  post_url: string;
+  content: string;
+  caption?: string;
+  is_active?: boolean;
+}
+
+export const getSocialPosts = (params: Record<string, string | number> = {}) => {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== '' && v !== undefined) qs.set(k, String(v));
+  });
+  return request<SocialPost[]>(`/api/dashboard/social-posts?${qs}`);
+};
+
+export const createSocialPost = (data: SocialPostCreateInput) =>
+  request<SocialPost>('/api/dashboard/social-posts', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+
+export const updateSocialPost = (id: string, data: Partial<SocialPostCreateInput>) =>
+  request<SocialPost>(`/api/dashboard/social-posts/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+
+export const deleteSocialPost = (id: string) =>
+  request<{ status: string }>(`/api/dashboard/social-posts/${id}`, {
+    method: 'DELETE',
+  });

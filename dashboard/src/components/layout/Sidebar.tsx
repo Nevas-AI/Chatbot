@@ -10,6 +10,7 @@ import {
   Sparkles,
   Building2,
   ChevronDown,
+  Share2,
 } from 'lucide-react';
 import { useClient } from '../../contexts/ClientContext';
 
@@ -20,6 +21,7 @@ const links = [
   { to: '/escalations', label: 'Escalations', icon: AlertTriangle },
   { to: '/users', label: 'Users', icon: Users },
   { to: '/leads', label: 'Leads', icon: UserPlus },
+  { to: '/social', label: 'Social Media', icon: Share2 },
   { to: '/clients', label: 'Clients', icon: Building2 },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];

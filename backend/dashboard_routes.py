@@ -26,7 +26,7 @@ from sqlalchemy.orm import selectinload
 from pydantic import BaseModel, Field
 
 from database import get_db
-from models import Client, Conversation, Message, EscalationEvent, DashboardSettings, ChatUser, Lead
+from models import Client, Conversation, Message, EscalationEvent, DashboardSettings, ChatUser, Lead, SocialPost
 from lead_capture import encrypt_password, decrypt_password, send_test_email
 
 logger = logging.getLogger(__name__)
@@ -1083,4 +1083,204 @@ async def test_client_email(client_id: UUID, db: AsyncSession = Depends(get_db))
         return {"status": "success", "message": "Test email sent successfully!"}
     else:
         raise HTTPException(status_code=400, detail=error or "Failed to send test email")
+
+
+# ─────────────────────────────────────────────
+# Social Media Posts (scoped by client_id)
+# ─────────────────────────────────────────────
+
+class SocialPostOut(BaseModel):
+    id: str
+    client_id: str
+    platform: str
+    post_url: str
+    content: str
+    caption: str | None = None
+    is_active: bool
+    ingested: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class SocialPostCreateIn(BaseModel):
+    client_id: str = Field(..., description="Client UUID")
+    platform: str = Field(..., pattern=r"^(linkedin|facebook|instagram|twitter|other)$")
+    post_url: str = Field(..., min_length=1, max_length=1000)
+    content: str = Field(..., min_length=1)
+    caption: str | None = Field(None, max_length=500)
+    is_active: bool = True
+
+
+class SocialPostUpdateIn(BaseModel):
+    platform: str | None = Field(None, pattern=r"^(linkedin|facebook|instagram|twitter|other)$")
+    post_url: str | None = Field(None, max_length=1000)
+    content: str | None = None
+    caption: str | None = None
+    is_active: bool | None = None
+
+
+def _social_post_to_out(p: SocialPost) -> SocialPostOut:
+    return SocialPostOut(
+        id=str(p.id),
+        client_id=str(p.client_id),
+        platform=p.platform,
+        post_url=p.post_url,
+        content=p.content,
+        caption=p.caption,
+        is_active=p.is_active,
+        ingested=p.ingested,
+        created_at=p.created_at,
+    )
+
+
+async def _ingest_social_post(client_id: str, post: SocialPost) -> bool:
+    """Embed a social post into the client's RAG vectorstore."""
+    try:
+        from main import client_pipelines
+        pipeline = client_pipelines.get(client_id)
+        if not pipeline:
+            logger.warning(f"No pipeline found for client {client_id}, skipping ingestion")
+            return False
+
+        platform_label = post.platform.capitalize()
+        text = (
+            f"[Social Media — {platform_label}]\n"
+            f"{post.content}\n"
+            f"Source: {post.post_url}"
+        )
+        if post.caption:
+            text = f"{post.caption}\n\n{text}"
+
+        embedding = pipeline._get_embedding(text)
+        pipeline.vectorstore.add(
+            content=text,
+            metadata={
+                "source": "social_media",
+                "type": "social_post",
+                "platform": post.platform,
+                "post_url": post.post_url,
+                "priority": "high",
+            },
+            embedding=embedding,
+        )
+        pipeline.vectorstore.save()
+        logger.info(f"✅ Ingested social post ({platform_label}) for client {client_id}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to ingest social post: {e}")
+        return False
+
+
+@router.get("/social-posts", response_model=list[SocialPostOut])
+async def list_social_posts(
+    client_id: str | None = Query(None),
+    platform: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    """List social media posts with optional filters."""
+    query = select(SocialPost).order_by(desc(SocialPost.created_at))
+
+    conditions = []
+    if client_id:
+        try:
+            conditions.append(SocialPost.client_id == UUID(client_id))
+        except ValueError:
+            pass
+    if platform:
+        conditions.append(SocialPost.platform == platform)
+    if conditions:
+        query = query.where(and_(*conditions))
+
+    offset = (page - 1) * page_size
+    query = query.offset(offset).limit(page_size)
+
+    result = await db.execute(query)
+    posts = result.scalars().all()
+    return [_social_post_to_out(p) for p in posts]
+
+
+@router.post("/social-posts", response_model=SocialPostOut, status_code=201)
+async def create_social_post(
+    body: SocialPostCreateIn,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a social media post and ingest into RAG vectorstore."""
+    # Verify client exists
+    try:
+        cid = UUID(body.client_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid client_id")
+
+    result = await db.execute(select(Client).where(Client.id == cid))
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    post = SocialPost(
+        client_id=cid,
+        platform=body.platform,
+        post_url=body.post_url,
+        content=body.content,
+        caption=body.caption,
+        is_active=body.is_active,
+    )
+    db.add(post)
+    await db.flush()
+    await db.refresh(post)
+
+    # Ingest into vectorstore if active
+    if post.is_active:
+        ingested = await _ingest_social_post(body.client_id, post)
+        post.ingested = ingested
+        await db.flush()
+
+    await db.commit()
+    return _social_post_to_out(post)
+
+
+@router.put("/social-posts/{post_id}", response_model=SocialPostOut)
+async def update_social_post(
+    post_id: UUID,
+    body: SocialPostUpdateIn,
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a social media post and re-ingest into RAG vectorstore."""
+    result = await db.execute(select(SocialPost).where(SocialPost.id == post_id))
+    post = result.scalar_one_or_none()
+    if not post:
+        raise HTTPException(status_code=404, detail="Social post not found")
+
+    update_data = body.model_dump(exclude_unset=True)
+    content_changed = "content" in update_data or "caption" in update_data
+    for field, value in update_data.items():
+        setattr(post, field, value)
+
+    # Re-ingest if content changed and post is active
+    if content_changed and post.is_active:
+        ingested = await _ingest_social_post(str(post.client_id), post)
+        post.ingested = ingested
+
+    await db.flush()
+    await db.commit()
+    await db.refresh(post)
+    return _social_post_to_out(post)
+
+
+@router.delete("/social-posts/{post_id}")
+async def delete_social_post(
+    post_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a social media post."""
+    result = await db.execute(select(SocialPost).where(SocialPost.id == post_id))
+    post = result.scalar_one_or_none()
+    if not post:
+        raise HTTPException(status_code=404, detail="Social post not found")
+
+    await db.delete(post)
+    await db.commit()
+    return {"status": "deleted", "post_id": str(post_id)}
 

@@ -83,6 +83,9 @@ class Client(Base):
     leads: Mapped[List["Lead"]] = relationship(
         back_populates="client", cascade="all, delete-orphan"
     )
+    social_posts: Mapped[List["SocialPost"]] = relationship(
+        back_populates="client", cascade="all, delete-orphan"
+    )
 
 
 # ─────────────────────────────────────────────
@@ -304,5 +307,40 @@ class Lead(Base):
     __table_args__ = (
         Index("idx_leads_client_created", "client_id", "created_at"),
         Index("idx_leads_email_sent", "email_sent"),
+    )
+
+
+# ─────────────────────────────────────────────
+# SocialPost
+# ─────────────────────────────────────────────
+class SocialPost(Base):
+    __tablename__ = "social_posts"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    client_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("clients.id", ondelete="CASCADE"), index=True
+    )
+
+    platform: Mapped[str] = mapped_column(
+        String(50)
+    )  # linkedin | facebook | instagram | twitter | other
+    post_url: Mapped[str] = mapped_column(String(1000))
+    content: Mapped[str] = mapped_column(Text)
+    caption: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    ingested: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    # Relationships
+    client: Mapped["Client"] = relationship(back_populates="social_posts")
+
+    __table_args__ = (
+        Index("idx_social_posts_client_platform", "client_id", "platform"),
+        Index("idx_social_posts_client_active", "client_id", "is_active"),
     )
 
