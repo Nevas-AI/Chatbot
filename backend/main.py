@@ -102,6 +102,8 @@ def _build_client_config(client: Client) -> dict:
         "lead_email": client.lead_email,
         "lead_email_password": client.lead_email_password,
         "email_enabled": client.email_enabled,
+        # Microsoft Bookings
+        "booking_url": client.booking_url,
     }
 
 
@@ -805,6 +807,7 @@ async def get_widget_config(client_slug: str):
         "company_name": config.get("company_name", "Your Company"),
         "welcome_msg": config.get("welcome_msg", "Hi there! 👋 How can I help you today?"),
         "logo_url": config.get("logo_url"),
+        "booking_url": config.get("booking_url"),
     }
 
 
@@ -1099,7 +1102,8 @@ async def chat(request: ChatRequest, req: Request):
         full_response = ""
         # Buffer for detecting lead markers before streaming to client
         stream_buffer = ""
-        marker_start_re = _re.compile(r"\[(LEAD_|SHOW_LEAD_FORM)")
+        marker_start_re = _re.compile(r"\[(LEAD_|SHOW_LEAD_FORM|SHOW_BOOKING_FORM)")
+        booking_marker_re = _re.compile(r"\[SHOW_BOOKING_FORM\]")
 
         try:
             for token in rag_pipeline.chat_stream(request.message, history):
@@ -1111,7 +1115,7 @@ async def chat(request: ChatRequest, req: Request):
                     # If we see a potential marker start, keep buffering
                     if marker_start_re.search(stream_buffer):
                         # Check if we have a complete marker to strip
-                        cleaned = LEAD_MARKER_PATTERN.sub("", stream_buffer)
+                        cleaned = booking_marker_re.sub("", LEAD_MARKER_PATTERN.sub("", stream_buffer))
                         if cleaned != stream_buffer:
                             # Marker found and stripped — flush cleaned text
                             if cleaned.strip():
@@ -1155,7 +1159,7 @@ async def chat(request: ChatRequest, req: Request):
 
             # Flush any remaining clean buffer content
             if stream_buffer:
-                cleaned = LEAD_MARKER_PATTERN.sub("", stream_buffer).strip()
+                cleaned = booking_marker_re.sub("", LEAD_MARKER_PATTERN.sub("", stream_buffer)).strip()
                 if cleaned:
                     data = json.dumps({
                         "type": "token",
@@ -1164,14 +1168,17 @@ async def chat(request: ChatRequest, req: Request):
                     })
                     yield f"data: {data}\n\n"
 
-            # Strip lead markers from the visible response
-            clean_response = LEAD_MARKER_PATTERN.sub("", full_response).strip()
+            # Strip lead and booking markers from the visible response
+            clean_response = booking_marker_re.sub("", LEAD_MARKER_PATTERN.sub("", full_response)).strip()
 
             add_to_history(session_id, "assistant", clean_response)
             await persist_message(session_id, "assistant", clean_response, "text", page_url=request.page_url, client_id=client_id)
 
             if "[SHOW_LEAD_FORM]" in full_response:
                 yield f"data: {json.dumps({'type': 'show_lead_form', 'session_id': session_id})}\n\n"
+
+            if "[SHOW_BOOKING_FORM]" in full_response:
+                yield f"data: {json.dumps({'type': 'show_booking_form', 'session_id': session_id})}\n\n"
 
             # ── Lead capture processing ──
             try:

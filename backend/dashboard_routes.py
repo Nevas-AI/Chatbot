@@ -167,6 +167,7 @@ class ClientOut(BaseModel):
     escalation_keywords: Optional[dict] = None
     lead_email: Optional[str] = None
     email_enabled: bool = False
+    booking_url: Optional[str] = None
     is_active: bool
     created_at: datetime
 
@@ -191,6 +192,7 @@ class ClientCreateIn(BaseModel):
     lead_email: Optional[str] = None
     lead_email_password: Optional[str] = None
     email_enabled: bool = False
+    booking_url: Optional[str] = None
 
 
 class ClientUpdateIn(BaseModel):
@@ -210,6 +212,7 @@ class ClientUpdateIn(BaseModel):
     lead_email: Optional[str] = None
     lead_email_password: Optional[str] = None
     email_enabled: Optional[bool] = None
+    booking_url: Optional[str] = None
 
 
 # ─────────────────────────────────────────────
@@ -251,6 +254,7 @@ def _client_to_out(c: Client) -> ClientOut:
         escalation_keywords=c.escalation_keywords,
         lead_email=c.lead_email,
         email_enabled=c.email_enabled,
+        booking_url=c.booking_url,
         is_active=c.is_active,
         created_at=c.created_at,
     )
@@ -306,6 +310,7 @@ async def create_client(
         lead_email=body.lead_email,
         lead_email_password=encrypted_pwd,
         email_enabled=body.email_enabled,
+        booking_url=body.booking_url,
     )
     db.add(client)
     await db.flush()

@@ -1395,6 +1395,63 @@
     });
   }
 
+  // ─── Booking Form (Microsoft Bookings Embed) ───────────
+  function showBookingForm() {
+    var messagesEl = document.getElementById("aria-messages");
+    var bookingCard = document.createElement("div");
+
+    var bookingUrl = CONFIG._bookingUrl || "";
+    if (!bookingUrl) {
+      // Fallback: if no URL configured, show a message instead
+      addBotMessage("Demo booking is currently being set up. Please contact us directly to schedule.");
+      return;
+    }
+
+    bookingCard.style.cssText = "background: var(--aria-bg); border: 1px solid var(--aria-border); border-radius: 16px; padding: 0; margin: 8px 0; box-shadow: 0 8px 24px rgba(0,0,0,0.06); animation: aria-msgSlide 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); overflow: hidden;";
+
+    bookingCard.innerHTML = `
+      <div style="padding: 18px 20px 14px; border-bottom: 1px solid var(--aria-border);">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: var(--aria-primary-light); color: var(--aria-primary); flex-shrink: 0;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+          </div>
+          <div>
+            <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: var(--aria-text); letter-spacing: -0.01em;">Schedule Your Demo</h3>
+            <p style="margin: 4px 0 0; font-size: 12.5px; color: var(--aria-text-secondary); line-height: 1.4;">Pick a convenient time slot below</p>
+          </div>
+        </div>
+      </div>
+      <div style="width: 100%; height: 480px; background: var(--aria-bg-secondary);">
+        <iframe
+          src="${escapeHtml(bookingUrl)}"
+          style="width: 100%; height: 100%; border: none;"
+          title="Book a Demo"
+          loading="lazy"
+          allow="clipboard-write"
+        ></iframe>
+      </div>
+      <div style="padding: 10px 20px; border-top: 1px solid var(--aria-border); display: flex; align-items: center; justify-content: space-between;">
+        <span style="font-size: 11.5px; color: var(--aria-text-secondary); font-weight: 500;">Powered by Microsoft Bookings</span>
+        <a href="${escapeHtml(bookingUrl)}" target="_blank" rel="noopener" style="font-size: 12px; color: var(--aria-primary); text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 4px;">
+          Open in new tab
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+        </a>
+      </div>
+    `;
+
+    messagesEl.appendChild(bookingCard);
+    scrollToBottom();
+  }
+
   // ─── Typing Indicator ─────────────────────────────────
   function showTyping() {
     var messagesEl = document.getElementById("aria-messages");
@@ -1566,6 +1623,8 @@
               }
             } else if (data.type === "show_lead_form") {
               showLeadForm();
+            } else if (data.type === "show_booking_form") {
+              showBookingForm();
             } else if (data.type === "token") {
               if (!streamBubble) {
                 streamBubble = createStreamingMessage();
@@ -1675,6 +1734,7 @@
         if (data.company_name) CONFIG.companyName = data.company_name;
         if (data.welcome_msg) CONFIG._welcomeMsg = data.welcome_msg;
         if (data.logo_url) CONFIG._logoUrl = data.logo_url;
+        if (data.booking_url) CONFIG._bookingUrl = data.booking_url;
         // Recompute color variables
         primaryHSL = hexToHSL(CONFIG.primaryColor);
       }

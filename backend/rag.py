@@ -264,6 +264,10 @@ When you detect buying interest, respond warmly and append the special system ma
 Do not ask them to type their details manually in the chat layout, always use the [SHOW_LEAD_FORM] marker so the widget can render an interactive form.
 If the user declines to share certain details, respect that and continue
 with whatever they are comfortable providing.
+
+DEMO BOOKING
+{booking_instructions}
+
 LOGGING CAPTURED LEADS
 When the user provides their contact details, include your natural response AND
 append the following markers at the very end of your message, each on its own line.
@@ -345,6 +349,7 @@ Do NOT provide references for Conversational messages, greetings, simple request
         self.support_email = config.get("support_email", os.getenv("SUPPORT_EMAIL", "support@yourcompany.com"))
         self.support_phone = config.get("support_phone", os.getenv("SUPPORT_PHONE", "+91-XXXXXXXXXX"))
         self.business_hours = config.get("business_hours", os.getenv("BUSINESS_HOURS", "Mon-Fri 9AM-6PM IST"))
+        self.booking_url = config.get("booking_url", "")
 
         # Chunking parameters (~500 tokens = ~2000 chars, ~50 token overlap = ~200 chars)
         self.chunk_size = 2000
@@ -354,6 +359,28 @@ Do NOT provide references for Conversational messages, greetings, simple request
         store_path = os.path.join(self.persist_dir, f"{self.collection_name}.json")
         self.vectorstore = VectorStore(persist_path=store_path)
 
+        # Build booking instructions based on whether the client has a booking URL configured
+        if self.booking_url:
+            booking_instructions = (
+                "This client has demo booking ENABLED via Microsoft Bookings.\n"
+                "When a visitor expresses interest in scheduling or booking a demo, a meeting, "
+                "a consultation, or any appointment-related request (e.g., \"book a demo\", "
+                "\"schedule a meeting\", \"I'd like a demo\", \"can I see a demo?\", "
+                "\"set up a call\", \"arrange a consultation\"), respond with a brief, warm message "
+                "and append the special system marker [SHOW_BOOKING_FORM] at the end of your message.\n"
+                "Example:\n"
+                "\"I'd love to help you schedule a demo! You can pick a convenient time slot right here:\n"
+                "[SHOW_BOOKING_FORM]\"\n"
+                "Do NOT ask the user to visit an external link or provide their availability manually — "
+                "the [SHOW_BOOKING_FORM] marker will render an embedded booking calendar in the chat."
+            )
+        else:
+            booking_instructions = (
+                "Demo booking is NOT configured for this client. "
+                "If a visitor asks to book a demo, offer to collect their details via the lead form instead "
+                "by using [SHOW_LEAD_FORM]."
+            )
+
         # Format system prompt with client info
         self.system_prompt = self.SYSTEM_PROMPT.format(
             bot_name=self.bot_name,
@@ -361,6 +388,7 @@ Do NOT provide references for Conversational messages, greetings, simple request
             support_email=self.support_email,
             support_phone=self.support_phone,
             business_hours=self.business_hours,
+            booking_instructions=booking_instructions,
         )
 
         # Configure Gemini API

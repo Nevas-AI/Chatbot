@@ -31,6 +31,7 @@ export interface Client {
   escalation_keywords: Record<string, unknown> | null;
   lead_email: string | null;
   email_enabled: boolean;
+  booking_url: string | null;
   is_active: boolean;
   created_at: string;
 }
@@ -51,6 +52,7 @@ export interface ClientCreateInput {
   lead_email?: string;
   lead_email_password?: string;
   email_enabled?: boolean;
+  booking_url?: string;
 }
 
 export const getClients = () => request<Client[]>('/api/dashboard/clients');

@@ -64,6 +64,9 @@ class Client(Base):
     )  # Fernet-encrypted Gmail App Password
     email_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
 
+    # Microsoft Bookings integration
+    booking_url: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
+
     # Meta
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

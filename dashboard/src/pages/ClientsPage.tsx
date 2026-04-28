@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createClient, updateClient, deleteClient, testClientEmail, uploadClientLogo, deleteClientLogo, Client, ClientCreateInput } from '../lib/api';
 import { useClient } from '../contexts/ClientContext';
-import { Plus, Edit2, Trash2, Globe, Mail, Phone, Clock, Palette, Save, X, Send, Lock, ToggleLeft, ToggleRight, Upload, Image } from 'lucide-react';
+import { Plus, Edit2, Trash2, Globe, Mail, Phone, Clock, Palette, Save, X, Send, Lock, ToggleLeft, ToggleRight, Upload, Image, Calendar } from 'lucide-react';
 
 const emptyForm: ClientCreateInput = {
   name: '',
@@ -19,6 +19,7 @@ const emptyForm: ClientCreateInput = {
   lead_email: '',
   lead_email_password: '',
   email_enabled: false,
+  booking_url: '',
 };
 
 export default function ClientsPage() {
@@ -100,6 +101,7 @@ export default function ClientsPage() {
       lead_email: client.lead_email || '',
       lead_email_password: '',
       email_enabled: client.email_enabled,
+      booking_url: client.booking_url || '',
     });
     setShowForm(true);
     setEmailTestResult(null);
@@ -363,6 +365,36 @@ export default function ClientsPage() {
               </div>
             )}
           </div>
+
+          {/* Microsoft Bookings Section */}
+          <div style={{ marginTop: 24, borderTop: '1px solid var(--color-border)', paddingTop: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <Calendar size={18} style={{ color: '#0078d4' }} />
+              <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Demo Booking (Microsoft Bookings)</h3>
+              {form.booking_url && (
+                <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4, color: '#22c55e', fontSize: '0.8rem', fontWeight: 500 }}>
+                  ✓ Configured
+                </span>
+              )}
+            </div>
+            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 16 }}>
+              Paste your Microsoft Bookings page URL below. When configured, the chatbot will embed an interactive calendar in the chat when visitors request a demo.
+            </p>
+            <div>
+              <label style={{ display: 'block', marginBottom: 6, fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                <Calendar size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Bookings Page URL
+              </label>
+              <input
+                className="input"
+                value={form.booking_url || ''}
+                onChange={(e) => handleChange('booking_url', e.target.value)}
+                placeholder="https://outlook.office.com/book/YourPage@yourdomain.com/..."
+              />
+              <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: '6px 0 0', opacity: 0.7 }}>
+                Find this URL in Microsoft 365 → Bookings → Your booking page → Share → Copy link. Leave empty to disable.
+              </p>
+            </div>
+          </div>
           <div style={{ display: 'flex', gap: 12, marginTop: 20, justifyContent: 'flex-end' }}>
             <button className="btn" onClick={cancelForm}>
               <X size={16} /> Cancel
@@ -409,6 +441,13 @@ export default function ClientsPage() {
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#22c55e', fontSize: '0.75rem' }}>✉️ Lead emails → {client.lead_email}</span>
                 ) : (
                   <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>✉️ Lead emails disabled</span>
+                )}
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                {client.booking_url ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#0078d4', fontSize: '0.75rem' }}>📅 Demo booking enabled</span>
+                ) : (
+                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>📅 Demo booking not configured</span>
                 )}
               </div>
             </div>
