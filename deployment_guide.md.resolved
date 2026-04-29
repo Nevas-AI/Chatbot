@@ -431,7 +431,7 @@ sudo systemctl reload nginx
 
 Create the script once:
 
-```bash
+```
 sudo nano /var/www/neva-chatbot/deploy.sh
 ```
 
