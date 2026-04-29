@@ -416,9 +416,8 @@ cd /var/www/neva-chatbot
 git pull origin main
 
 # If backend changed:
-cd backend && source venv/bin/activate && pip install -r requirements.txt && deactivate
-alembic upgrade head
-
+cd backend && source venv/bin/activate && pip install -r requirements.txt && deactivate 
+  
 # If dashboard changed:
 cd /var/www/neva-chatbot/dashboard && npm install && npm run build
 

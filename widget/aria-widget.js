@@ -1402,6 +1402,8 @@
   }
 
   // ─── Booking Form (Microsoft Bookings Embed) ───────────
+  // Note: Microsoft Bookings blocks iframe embedding (X-Frame-Options),
+  // so we use a popup window approach with a premium in-chat card.
   var bookingFormShown = false; // prevent duplicate booking forms
 
   function showBookingForm() {
@@ -1423,12 +1425,10 @@
 
     bookingCard.style.cssText = "background: var(--aria-bg); border: 1.5px solid var(--aria-primary); border-radius: 16px; padding: 0; margin: 8px 0; box-shadow: 0 8px 24px rgba(99, 102, 241, 0.12); animation: aria-msgSlide 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); overflow: hidden;";
 
-    var iframeId = "aria-booking-iframe-" + Date.now();
-
     bookingCard.innerHTML = `
-      <div style="padding: 18px 20px 14px; text-align: center; border-bottom: 1px solid var(--aria-border);">
-        <div style="display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, var(--aria-gradient-start), var(--aria-gradient-end)); color: #ffffff; margin-bottom: 10px; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <div style="padding: 22px 20px 18px; text-align: center;">
+        <div style="display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 16px; background: linear-gradient(135deg, var(--aria-gradient-start), var(--aria-gradient-end)); color: #ffffff; margin-bottom: 14px; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
             <line x1="16" y1="2" x2="16" y2="6"></line>
             <line x1="8" y1="2" x2="8" y2="6"></line>
@@ -1436,64 +1436,75 @@
             <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"></path>
           </svg>
         </div>
-        <h3 style="margin: 0 0 4px; font-size: 16px; font-weight: 700; color: var(--aria-text); letter-spacing: -0.01em;">Schedule Your Demo</h3>
-        <p style="margin: 0; font-size: 12.5px; color: var(--aria-text-secondary); line-height: 1.4;">Choose a convenient date & time below</p>
-      </div>
+        <h3 style="margin: 0 0 6px; font-size: 17px; font-weight: 700; color: var(--aria-text); letter-spacing: -0.01em;">Schedule Your Demo</h3>
+        <p style="margin: 0 0 18px; font-size: 13px; color: var(--aria-text-secondary); line-height: 1.5;">Pick a convenient date & time — it only takes a minute!</p>
 
-      <!-- Loading spinner (shown while iframe loads) -->
-      <div id="aria-booking-loader" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; gap: 12px;">
-        <div style="width: 36px; height: 36px; border: 3px solid var(--aria-border); border-top-color: var(--aria-primary); border-radius: 50%; animation: aria-spin 0.8s linear infinite;"></div>
-        <span style="font-size: 13px; color: var(--aria-text-secondary);">Loading booking calendar...</span>
-      </div>
+        <!-- Steps indicator -->
+        <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 20px;">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--aria-primary-light); color: var(--aria-primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;">1</div>
+            <span style="font-size: 11px; color: var(--aria-text-secondary); font-weight: 500;">Choose slot</span>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--aria-primary-light); color: var(--aria-primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;">2</div>
+            <span style="font-size: 11px; color: var(--aria-text-secondary); font-weight: 500;">Fill details</span>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--aria-primary-light); color: var(--aria-primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;">3</div>
+            <span style="font-size: 11px; color: var(--aria-text-secondary); font-weight: 500;">Confirmed!</span>
+          </div>
+        </div>
 
-      <!-- Iframe container -->
-      <div id="aria-booking-iframe-wrap" style="display: none;">
-        <iframe
-          id="${iframeId}"
-          src="${bookingUrl}"
-          style="width: 100%; height: 480px; border: none; display: block;"
-          allow="clipboard-write"
-          loading="lazy"
-          title="Microsoft Bookings - Schedule Demo"
-        ></iframe>
-      </div>
+        <button id="aria-booking-btn" style="width: 100%; padding: 14px 20px; background: linear-gradient(135deg, var(--aria-gradient-start), var(--aria-gradient-end)); color: #ffffff; border: none; border-radius: 12px; cursor: pointer; font-weight: 600; font-size: 15px; font-family: var(--aria-font); box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3); transition: all 0.25s ease; display: flex; align-items: center; justify-content: center; gap: 10px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          Open Booking Calendar
+        </button>
 
-      <div style="padding: 10px 20px; text-align: center; border-top: 1px solid var(--aria-border); display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap;">
-        <p style="margin: 0; font-size: 11px; color: var(--aria-text-secondary); font-weight: 500; display: flex; align-items: center; gap: 5px;">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-          Powered by Microsoft Bookings
-        </p>
-        <a href="${bookingUrl}" target="_blank" rel="noopener" style="margin: 0; font-size: 11px; color: var(--aria-primary); font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 4px; cursor: pointer;">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-          Open in new tab
-        </a>
+        <div style="margin-top: 14px; display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap;">
+          <p style="margin: 0; font-size: 11px; color: var(--aria-text-secondary); font-weight: 500; display: flex; align-items: center; gap: 5px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            Powered by Microsoft Bookings
+          </p>
+          <a href="${bookingUrl}" target="_blank" rel="noopener" style="font-size: 11px; color: var(--aria-primary); font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+            Open in new tab
+          </a>
+        </div>
       </div>
     `;
 
     messagesEl.appendChild(bookingCard);
     scrollToBottom();
 
-    // Handle iframe load / error
-    var iframe = document.getElementById(iframeId);
-    var loader = document.getElementById("aria-booking-loader");
-    var iframeWrap = document.getElementById("aria-booking-iframe-wrap");
-
-    if (iframe) {
-      iframe.addEventListener("load", function () {
-        // Hide loader and show iframe
-        if (loader) loader.style.display = "none";
-        if (iframeWrap) iframeWrap.style.display = "block";
-        scrollToBottom();
+    // Attach click handler for the booking button
+    var bookBtn = document.getElementById("aria-booking-btn");
+    if (bookBtn) {
+      bookBtn.addEventListener("mouseenter", function () {
+        bookBtn.style.transform = "translateY(-2px)";
+        bookBtn.style.boxShadow = "0 6px 20px rgba(99, 102, 241, 0.4)";
       });
-
-      // Fallback timeout: if iframe doesn't load in 10s, hide loader and show it anyway
-      setTimeout(function () {
-        if (loader && loader.style.display !== "none") {
-          loader.style.display = "none";
-          if (iframeWrap) iframeWrap.style.display = "block";
-          scrollToBottom();
-        }
-      }, 10000);
+      bookBtn.addEventListener("mouseleave", function () {
+        bookBtn.style.transform = "none";
+        bookBtn.style.boxShadow = "0 4px 14px rgba(99, 102, 241, 0.3)";
+      });
+      bookBtn.addEventListener("click", function () {
+        bookBtn.style.transform = "scale(0.97)";
+        setTimeout(function () { bookBtn.style.transform = "none"; }, 150);
+        // Open booking page in a centered popup window
+        var w = 700, h = 750;
+        var left = (screen.width - w) / 2;
+        var top = (screen.height - h) / 2;
+        window.open(
+          bookingUrl,
+          "BookingWindow",
+          "width=" + w + ",height=" + h + ",left=" + left + ",top=" + top + ",toolbar=no,menubar=no,scrollbars=yes,resizable=yes"
+        );
+      });
     }
   }
 
