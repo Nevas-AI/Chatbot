@@ -1058,7 +1058,7 @@ async def list_leads(
 
 @router.post("/clients/{client_id}/test-email")
 async def test_client_email(client_id: UUID, db: AsyncSession = Depends(get_db)):
-    """Send a test email to verify a client's Gmail SMTP configuration."""
+    """Send a test email to verify a client's Outlook SMTP configuration."""
     result = await db.execute(select(Client).where(Client.id == client_id))
     client = result.scalar_one_or_none()
     if not client:

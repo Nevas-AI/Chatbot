@@ -57,11 +57,11 @@ class Client(Base):
     # Escalation keywords override (JSON array, nullable => use defaults)
     escalation_keywords: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
-    # Email / Lead notification config (Gmail only, per-client)
+    # Email / Lead notification config (Outlook only, per-client)
     lead_email: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     lead_email_password: Mapped[Optional[str]] = mapped_column(
         String(500), nullable=True
-    )  # Fernet-encrypted Gmail App Password
+    )  # Fernet-encrypted Outlook App Password
     email_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Microsoft Bookings integration

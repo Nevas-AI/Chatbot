@@ -336,18 +336,18 @@ export default function ClientsPage() {
               </button>
             </div>
             <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 16 }}>
-              When enabled, captured leads will be automatically emailed to the configured Gmail address.
+              When enabled, captured leads will be automatically emailed to the configured Outlook address.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div>
                 <label style={{ display: 'block', marginBottom: 6, fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
-                  <Mail size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Gmail Address
+                  <Mail size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Outlook Address
                 </label>
-                <input className="input" value={form.lead_email || ''} onChange={(e) => handleChange('lead_email', e.target.value)} placeholder="your-email@gmail.com" />
+                <input className="input" value={form.lead_email || ''} onChange={(e) => handleChange('lead_email', e.target.value)} placeholder="your-email@outlook.com" />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: 6, fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
-                  <Lock size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Gmail App Password
+                  <Lock size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Outlook App Password
                 </label>
                 <input className="input" type="password" value={form.lead_email_password || ''} onChange={(e) => handleChange('lead_email_password', e.target.value)} placeholder={editingId ? '••••••••••••••••' : 'Enter app password'} />
               </div>

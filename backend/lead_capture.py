@@ -2,7 +2,7 @@
 lead_capture.py - Lead Extraction & Email Notification
 ======================================================
 Extracts structured lead data (name, email, phone, company) from
-chatbot conversations and sends lead notifications via Gmail SMTP.
+chatbot conversations and sends lead notifications via Outlook SMTP.
 
 Passwords are encrypted at rest using Fernet symmetric encryption.
 """
@@ -240,10 +240,10 @@ def extract_lead_from_conversation(
 
 
 # ─────────────────────────────────────────────
-# Email delivery (Gmail SMTP)
+# Email delivery (Outlook SMTP)
 # ─────────────────────────────────────────────
-GMAIL_SMTP_HOST = "smtp.gmail.com"
-GMAIL_SMTP_PORT = 587
+OUTLOOK_SMTP_HOST = "smtp.office365.com"
+OUTLOOK_SMTP_PORT = 587
 
 
 def send_lead_email(
@@ -256,11 +256,11 @@ def send_lead_email(
     full_history: Optional[List[Dict]] = None,
 ) -> tuple[bool, Optional[str]]:
     """
-    Send a lead notification email via Gmail SMTP.
+    Send a lead notification email via Outlook SMTP.
 
     Args:
-        sender_email: Gmail address to send from
-        sender_password: Decrypted Gmail App Password
+        sender_email: Outlook/Office365 address to send from
+        sender_password: App Password for the account
         recipient_email: Email to send the lead details to
         lead: Extracted lead data
         company_name: Client company name (for email branding)
@@ -378,8 +378,8 @@ Lead Details:
         msg.attach(MIMEText(text_body, "plain"))
         msg.attach(MIMEText(html_body, "html"))
 
-        # Send via Gmail SMTP
-        with smtplib.SMTP(GMAIL_SMTP_HOST, GMAIL_SMTP_PORT) as server:
+        # Send via Outlook SMTP
+        with smtplib.SMTP(OUTLOOK_SMTP_HOST, OUTLOOK_SMTP_PORT) as server:
             server.ehlo()
             server.starttls()
             server.ehlo()
@@ -390,7 +390,7 @@ Lead Details:
         return True, None
 
     except smtplib.SMTPAuthenticationError:
-        error = "Gmail authentication failed. Check email address and app password."
+        error = "Outlook authentication failed. Check email address and app password."
         logger.error(f"❌ {error}")
         return False, error
     except smtplib.SMTPException as e:
@@ -487,7 +487,7 @@ The {company_name} Team
         msg.attach(MIMEText(text_body, "plain"))
         msg.attach(MIMEText(html_body, "html"))
 
-        with smtplib.SMTP(GMAIL_SMTP_HOST, GMAIL_SMTP_PORT) as server:
+        with smtplib.SMTP(OUTLOOK_SMTP_HOST, OUTLOOK_SMTP_PORT) as server:
             server.ehlo()
             server.starttls()
             server.ehlo()
@@ -498,7 +498,7 @@ The {company_name} Team
         return True, None
 
     except smtplib.SMTPAuthenticationError:
-        error = "Gmail authentication failed. Check email address and app password."
+        error = "Outlook authentication failed. Check email address and app password."
         logger.error(f"❌ {error}")
         return False, error
     except Exception as e:
@@ -527,11 +527,11 @@ def send_test_email(
     company_name: str = "Your Company",
 ) -> tuple[bool, Optional[str]]:
     """
-    Send a test email to verify Gmail SMTP configuration.
+    Send a test email to verify Outlook SMTP configuration.
 
     Args:
-        sender_email: Gmail address
-        sender_password: Decrypted Gmail App Password
+        sender_email: Outlook/Office365 address
+        sender_password: App Password for the account
         company_name: Company name for branding
 
     Returns:
@@ -559,7 +559,7 @@ def send_test_email(
 
         msg.attach(MIMEText(html, "html"))
 
-        with smtplib.SMTP(GMAIL_SMTP_HOST, GMAIL_SMTP_PORT) as server:
+        with smtplib.SMTP(OUTLOOK_SMTP_HOST, OUTLOOK_SMTP_PORT) as server:
             server.ehlo()
             server.starttls()
             server.ehlo()
@@ -570,7 +570,7 @@ def send_test_email(
         return True, None
 
     except smtplib.SMTPAuthenticationError:
-        error = "Gmail authentication failed. Check email and app password."
+        error = "Outlook authentication failed. Check email and app password."
         logger.error(f"❌ {error}")
         return False, error
     except Exception as e:
