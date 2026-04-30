@@ -30,6 +30,8 @@ export interface Client {
   collection_name: string;
   escalation_keywords: Record<string, unknown> | null;
   lead_email: string | null;
+  ms_tenant_id: string | null;
+  ms_client_id: string | null;
   email_enabled: boolean;
   booking_url: string | null;
   is_active: boolean;
@@ -50,7 +52,9 @@ export interface ClientCreateInput {
   website_url?: string;
   collection_name?: string;
   lead_email?: string;
-  lead_email_password?: string;
+  ms_tenant_id?: string;
+  ms_client_id?: string;
+  ms_client_secret?: string;
   email_enabled?: boolean;
   booking_url?: string;
 }

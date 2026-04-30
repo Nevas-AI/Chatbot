@@ -17,7 +17,9 @@ const emptyForm: ClientCreateInput = {
   website_url: '',
   collection_name: '',
   lead_email: '',
-  lead_email_password: '',
+  ms_tenant_id: '',
+  ms_client_id: '',
+  ms_client_secret: '',
   email_enabled: false,
   booking_url: '',
 };
@@ -99,7 +101,9 @@ export default function ClientsPage() {
       website_url: client.website_url || '',
       collection_name: client.collection_name,
       lead_email: client.lead_email || '',
-      lead_email_password: '',
+      ms_tenant_id: client.ms_tenant_id || '',
+      ms_client_id: client.ms_client_id || '',
+      ms_client_secret: '', // Do not pre-fill secret
       email_enabled: client.email_enabled,
       booking_url: client.booking_url || '',
     });
@@ -341,15 +345,27 @@ export default function ClientsPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div>
                 <label style={{ display: 'block', marginBottom: 6, fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
-                  <Mail size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Outlook Address
+                  <Mail size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Sender Outlook Address
                 </label>
                 <input className="input" value={form.lead_email || ''} onChange={(e) => handleChange('lead_email', e.target.value)} placeholder="your-email@outlook.com" />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: 6, fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
-                  <Lock size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Outlook App Password
+                  <Globe size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Tenant ID (Directory ID)
                 </label>
-                <input className="input" type="password" value={form.lead_email_password || ''} onChange={(e) => handleChange('lead_email_password', e.target.value)} placeholder={editingId ? '••••••••••••••••' : 'Enter app password'} />
+                <input className="input" value={form.ms_tenant_id || ''} onChange={(e) => handleChange('ms_tenant_id', e.target.value)} placeholder="00000000-0000-0000-0000-000000000000" />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                  <Lock size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Client ID (Application ID)
+                </label>
+                <input className="input" value={form.ms_client_id || ''} onChange={(e) => handleChange('ms_client_id', e.target.value)} placeholder="00000000-0000-0000-0000-000000000000" />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                  <Lock size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Client Secret
+                </label>
+                <input className="input" type="password" value={form.ms_client_secret || ''} onChange={(e) => handleChange('ms_client_secret', e.target.value)} placeholder={editingId ? '••••••••••••••••' : 'Enter client secret'} />
               </div>
             </div>
             {editingId && (

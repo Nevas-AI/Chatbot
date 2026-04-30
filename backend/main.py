@@ -100,7 +100,9 @@ def _build_client_config(client: Client) -> dict:
         "logo_url": client.logo_url,
         # Email / Lead config
         "lead_email": client.lead_email,
-        "lead_email_password": client.lead_email_password,
+        "ms_tenant_id": client.ms_tenant_id,
+        "ms_client_id": client.ms_client_id,
+        "ms_client_secret": client.ms_client_secret,
         "email_enabled": client.email_enabled,
         # Microsoft Bookings
         "booking_url": client.booking_url,
@@ -735,13 +737,17 @@ async def _save_and_email_lead(
             if (
                 config.get("email_enabled")
                 and config.get("lead_email")
-                and config.get("lead_email_password")
+                and config.get("ms_tenant_id")
+                and config.get("ms_client_id")
+                and config.get("ms_client_secret")
             ):
                 try:
-                    decrypted_pwd = decrypt_password(config["lead_email_password"])
+                    decrypted_secret = decrypt_password(config["ms_client_secret"])
                     success, err = send_lead_email(
                         sender_email=config["lead_email"],
-                        sender_password=decrypted_pwd,
+                        tenant_id=config["ms_tenant_id"],
+                        client_id=config["ms_client_id"],
+                        client_secret=decrypted_secret,
                         recipient_email=config["lead_email"],
                         lead=lead_data,
                         company_name=config.get("company_name", "Your Company"),
@@ -755,7 +761,9 @@ async def _save_and_email_lead(
                         try:
                             send_thank_you_email(
                                 sender_email=config["lead_email"],
-                                sender_password=decrypted_pwd,
+                                tenant_id=config["ms_tenant_id"],
+                                client_id=config["ms_client_id"],
+                                client_secret=decrypted_secret,
                                 lead=lead_data,
                                 company_name=config.get("company_name", "Your Company"),
                                 bot_name=config.get("bot_name", "Neva"),

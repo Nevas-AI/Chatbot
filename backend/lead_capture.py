@@ -10,9 +10,7 @@ Passwords are encrypted at rest using Fernet symmetric encryption.
 import os
 import re
 import logging
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import requests
 from typing import Optional, Dict, List
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -240,15 +238,54 @@ def extract_lead_from_conversation(
 
 
 # ─────────────────────────────────────────────
-# Email delivery (Outlook SMTP)
+# Email delivery (Microsoft Graph API)
 # ─────────────────────────────────────────────
-OUTLOOK_SMTP_HOST = "smtp.office365.com"
-OUTLOOK_SMTP_PORT = 587
+
+def _get_ms_graph_token(tenant_id: str, client_id: str, client_secret: str) -> str:
+    url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
+    data = {
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "scope": "https://graph.microsoft.com/.default",
+        "grant_type": "client_credentials"
+    }
+    response = requests.post(url, data=data)
+    response.raise_for_status()
+    return response.json()["access_token"]
+
+
+def _send_ms_graph_email(token: str, sender_email: str, recipient_email: str, subject: str, html_body: str) -> None:
+    url = f"https://graph.microsoft.com/v1.0/users/{sender_email}/sendMail"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "message": {
+            "subject": subject,
+            "body": {
+                "contentType": "HTML",
+                "content": html_body
+            },
+            "toRecipients": [
+                {
+                    "emailAddress": {
+                        "address": recipient_email
+                    }
+                }
+            ]
+        },
+        "saveToSentItems": "true"
+    }
+    response = requests.post(url, headers=headers, json=payload)
+    response.raise_for_status()
 
 
 def send_lead_email(
     sender_email: str,
-    sender_password: str,
+    tenant_id: str,
+    client_id: str,
+    client_secret: str,
     recipient_email: str,
     lead: LeadData,
     company_name: str = "Your Company",
@@ -256,11 +293,13 @@ def send_lead_email(
     full_history: Optional[List[Dict]] = None,
 ) -> tuple[bool, Optional[str]]:
     """
-    Send a lead notification email via Outlook SMTP.
+    Send a lead notification email via Microsoft Graph API.
 
     Args:
         sender_email: Outlook/Office365 address to send from
-        sender_password: App Password for the account
+        tenant_id: MS Graph Tenant ID
+        client_id: MS Graph Client ID
+        client_secret: MS Graph Client Secret
         recipient_email: Email to send the lead details to
         lead: Extracted lead data
         company_name: Client company name (for email branding)
@@ -270,10 +309,7 @@ def send_lead_email(
         (success: bool, error_message: Optional[str])
     """
     try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = f"🔔 New Lead Captured by {bot_name} - {lead.name or 'Unknown'}"
-        msg["From"] = sender_email
-        msg["To"] = recipient_email
+        subject = f"🔔 New Lead Captured by {bot_name} - {lead.name or 'Unknown'}"
 
         # Build HTML email body
         now = datetime.now().strftime("%B %d, %Y at %I:%M %p")
@@ -290,7 +326,6 @@ def send_lead_email(
 
         # Build AI Summary
         ai_summary_html = ""
-        ai_summary_text_block = ""
         if full_history:
             try:
                 # Basic Gemini model generation
@@ -317,7 +352,6 @@ def send_lead_email(
                         f"<p style='color: #374151; margin: 0; font-size: 14px; line-height: 1.5;'>{summary_text}</p>"
                         f"</div>"
                     )
-                    ai_summary_text_block = f"\nAI Summary:\n{summary_text}\n"
             except Exception as e:
                 logger.error(f"Failed to generate lead summary: {e}")
 
@@ -363,38 +397,20 @@ def send_lead_email(
         </html>
         """
 
-        text_body = f"""
-New Lead Captured by {bot_name}
-{company_name} • {now}
-
-Lead Details:
-- Name: {lead.name or 'Not provided'}
-- Email: {lead.email or 'Not provided'}
-- Phone: {lead.phone or 'Not provided'}
-- Company: {lead.company or 'Not provided'}
-{ai_summary_text_block}
-"""
-
-        msg.attach(MIMEText(text_body, "plain"))
-        msg.attach(MIMEText(html_body, "html"))
-
-        # Send via Outlook SMTP
-        with smtplib.SMTP(OUTLOOK_SMTP_HOST, OUTLOOK_SMTP_PORT) as server:
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-            server.login(sender_email, sender_password)
-            server.send_message(msg)
+        token = _get_ms_graph_token(tenant_id, client_id, client_secret)
+        _send_ms_graph_email(token, sender_email, recipient_email, subject, html_body)
 
         logger.info(f"✅ Lead email sent to {recipient_email} for lead: {lead.name}")
         return True, None
 
-    except smtplib.SMTPAuthenticationError:
-        error = "Outlook authentication failed. Check email address and app password."
-        logger.error(f"❌ {error}")
-        return False, error
-    except smtplib.SMTPException as e:
-        error = f"SMTP error: {str(e)}"
+    except requests.exceptions.RequestException as e:
+        error_msg = str(e)
+        if hasattr(e, 'response') and e.response is not None:
+            try:
+                error_msg = e.response.json()
+            except Exception:
+                error_msg = e.response.text
+        error = f"MS Graph API error: {error_msg}"
         logger.error(f"❌ {error}")
         return False, error
     except Exception as e:
@@ -405,23 +421,22 @@ Lead Details:
 
 def send_thank_you_email(
     sender_email: str,
-    sender_password: str,
+    tenant_id: str,
+    client_id: str,
+    client_secret: str,
     lead: LeadData,
     company_name: str = "Your Company",
     bot_name: str = "Neva",
     full_history: Optional[List[Dict]] = None,
 ) -> tuple[bool, Optional[str]]:
     """
-    Send a dynamic AI-generated thank you email to the captured lead.
+    Send a dynamic AI-generated thank you email to the captured lead via MS Graph API.
     """
     if not lead.email:
         return False, "No recipient email provided."
 
     try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = f"Thank you for reaching out to {company_name}"
-        msg["From"] = sender_email
-        msg["To"] = lead.email
+        subject = f"Thank you for reaching out to {company_name}"
 
         # Generate AI Thank You message
         thank_you_text_block = "Thank you for reaching out! We have received your details and our team will contact you shortly."
@@ -476,29 +491,20 @@ def send_thank_you_email(
         </html>
         """
 
-        text_body = f"""{greeting}
-
-{thank_you_text_block}
-
-Best regards,
-The {company_name} Team
-"""
-
-        msg.attach(MIMEText(text_body, "plain"))
-        msg.attach(MIMEText(html_body, "html"))
-
-        with smtplib.SMTP(OUTLOOK_SMTP_HOST, OUTLOOK_SMTP_PORT) as server:
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-            server.login(sender_email, sender_password)
-            server.send_message(msg)
+        token = _get_ms_graph_token(tenant_id, client_id, client_secret)
+        _send_ms_graph_email(token, sender_email, lead.email, subject, html_body)
 
         logger.info(f"✅ Thank you email sent to {lead.email} for lead: {lead.name}")
         return True, None
 
-    except smtplib.SMTPAuthenticationError:
-        error = "Outlook authentication failed. Check email address and app password."
+    except requests.exceptions.RequestException as e:
+        error_msg = str(e)
+        if hasattr(e, 'response') and e.response is not None:
+            try:
+                error_msg = e.response.json()
+            except Exception:
+                error_msg = e.response.text
+        error = f"MS Graph API error: {error_msg}"
         logger.error(f"❌ {error}")
         return False, error
     except Exception as e:
@@ -523,25 +529,26 @@ def _email_row(label: str, value: str) -> str:
 
 def send_test_email(
     sender_email: str,
-    sender_password: str,
+    tenant_id: str,
+    client_id: str,
+    client_secret: str,
     company_name: str = "Your Company",
 ) -> tuple[bool, Optional[str]]:
     """
-    Send a test email to verify Outlook SMTP configuration.
+    Send a test email to verify MS Graph API configuration.
 
     Args:
-        sender_email: Outlook/Office365 address
-        sender_password: App Password for the account
+        sender_email: MS Graph sending address
+        tenant_id: MS Graph Tenant ID
+        client_id: MS Graph Client ID
+        client_secret: MS Graph Client Secret
         company_name: Company name for branding
 
     Returns:
         (success: bool, error_message: Optional[str])
     """
     try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = f"✅ {company_name} Chatbot - Email Configuration Test"
-        msg["From"] = sender_email
-        msg["To"] = sender_email
+        subject = f"✅ {company_name} Chatbot - MS Graph Email Test"
 
         html = f"""
         <html>
@@ -549,7 +556,7 @@ def send_test_email(
             <div style="max-width: 500px; margin: 0 auto; text-align: center; padding: 40px; background: #f0fdf4; border: 2px solid #86efac; border-radius: 12px;">
                 <h1 style="color: #16a34a; margin: 0;">✅ Configuration Successful!</h1>
                 <p style="color: #374151; margin: 16px 0 0 0;">
-                    Your email settings for <strong>{company_name}</strong> chatbot are working correctly.
+                    Your Microsoft Graph API email settings for <strong>{company_name}</strong> chatbot are working correctly.
                     Lead notifications will be sent to this email address.
                 </p>
             </div>
@@ -557,20 +564,20 @@ def send_test_email(
         </html>
         """
 
-        msg.attach(MIMEText(html, "html"))
-
-        with smtplib.SMTP(OUTLOOK_SMTP_HOST, OUTLOOK_SMTP_PORT) as server:
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-            server.login(sender_email, sender_password)
-            server.send_message(msg)
+        token = _get_ms_graph_token(tenant_id, client_id, client_secret)
+        _send_ms_graph_email(token, sender_email, sender_email, subject, html)
 
         logger.info(f"✅ Test email sent successfully to {sender_email}")
         return True, None
 
-    except smtplib.SMTPAuthenticationError:
-        error = "Outlook authentication failed. Check email and app password."
+    except requests.exceptions.RequestException as e:
+        error_msg = str(e)
+        if hasattr(e, 'response') and e.response is not None:
+            try:
+                error_msg = e.response.json()
+            except Exception:
+                error_msg = e.response.text
+        error = f"MS Graph API test failed: {error_msg}"
         logger.error(f"❌ {error}")
         return False, error
     except Exception as e:

@@ -166,6 +166,8 @@ class ClientOut(BaseModel):
     collection_name: str
     escalation_keywords: Optional[dict] = None
     lead_email: Optional[str] = None
+    ms_tenant_id: Optional[str] = None
+    ms_client_id: Optional[str] = None
     email_enabled: bool = False
     booking_url: Optional[str] = None
     is_active: bool
@@ -190,7 +192,9 @@ class ClientCreateIn(BaseModel):
     collection_name: Optional[str] = None
     escalation_keywords: Optional[dict] = None
     lead_email: Optional[str] = None
-    lead_email_password: Optional[str] = None
+    ms_tenant_id: Optional[str] = None
+    ms_client_id: Optional[str] = None
+    ms_client_secret: Optional[str] = None
     email_enabled: bool = False
     booking_url: Optional[str] = None
 
@@ -210,7 +214,9 @@ class ClientUpdateIn(BaseModel):
     escalation_keywords: Optional[dict] = None
     is_active: Optional[bool] = None
     lead_email: Optional[str] = None
-    lead_email_password: Optional[str] = None
+    ms_tenant_id: Optional[str] = None
+    ms_client_id: Optional[str] = None
+    ms_client_secret: Optional[str] = None
     email_enabled: Optional[bool] = None
     booking_url: Optional[str] = None
 
@@ -253,6 +259,8 @@ def _client_to_out(c: Client) -> ClientOut:
         collection_name=c.collection_name,
         escalation_keywords=c.escalation_keywords,
         lead_email=c.lead_email,
+        ms_tenant_id=c.ms_tenant_id,
+        ms_client_id=c.ms_client_id,
         email_enabled=c.email_enabled,
         booking_url=c.booking_url,
         is_active=c.is_active,
@@ -288,10 +296,10 @@ async def create_client(
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail=f"Slug '{body.slug}' already exists")
 
-    # Encrypt email password if provided
-    encrypted_pwd = None
-    if body.lead_email_password:
-        encrypted_pwd = encrypt_password(body.lead_email_password)
+    # Encrypt client secret if provided
+    encrypted_secret = None
+    if body.ms_client_secret:
+        encrypted_secret = encrypt_password(body.ms_client_secret)
 
     client = Client(
         name=body.name,
@@ -308,7 +316,9 @@ async def create_client(
         collection_name=body.collection_name or body.slug,
         escalation_keywords=body.escalation_keywords,
         lead_email=body.lead_email,
-        lead_email_password=encrypted_pwd,
+        ms_tenant_id=body.ms_tenant_id,
+        ms_client_id=body.ms_client_id,
+        ms_client_secret=encrypted_secret,
         email_enabled=body.email_enabled,
         booking_url=body.booking_url,
     )
@@ -358,13 +368,13 @@ async def update_client(
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
 
-    # Apply updates — encrypt password if provided
+    # Apply updates — encrypt secret if provided
     update_data = body.model_dump(exclude_unset=True)
-    if "lead_email_password" in update_data and update_data["lead_email_password"]:
-        update_data["lead_email_password"] = encrypt_password(update_data["lead_email_password"])
-    elif "lead_email_password" in update_data and not update_data["lead_email_password"]:
-        # If empty string, keep existing password
-        del update_data["lead_email_password"]
+    if "ms_client_secret" in update_data and update_data["ms_client_secret"]:
+        update_data["ms_client_secret"] = encrypt_password(update_data["ms_client_secret"])
+    elif "ms_client_secret" in update_data and not update_data["ms_client_secret"]:
+        # If empty string, keep existing secret
+        del update_data["ms_client_secret"]
     for field, value in update_data.items():
         setattr(client, field, value)
 
@@ -1058,34 +1068,36 @@ async def list_leads(
 
 @router.post("/clients/{client_id}/test-email")
 async def test_client_email(client_id: UUID, db: AsyncSession = Depends(get_db)):
-    """Send a test email to verify a client's Outlook SMTP configuration."""
+    """Send a test email to verify a client's Microsoft Graph API configuration."""
     result = await db.execute(select(Client).where(Client.id == client_id))
     client = result.scalar_one_or_none()
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
 
-    if not client.lead_email or not client.lead_email_password:
+    if not client.lead_email or not client.ms_tenant_id or not client.ms_client_id or not client.ms_client_secret:
         raise HTTPException(
             status_code=400,
-            detail="Email address and app password must be configured first."
+            detail="Email address, Tenant ID, Client ID, and Client Secret must be configured first."
         )
 
     try:
-        decrypted_pwd = decrypt_password(client.lead_email_password)
+        decrypted_secret = decrypt_password(client.ms_client_secret)
     except Exception:
         raise HTTPException(
             status_code=400,
-            detail="Failed to decrypt stored password. Please re-enter your app password."
+            detail="Failed to decrypt stored secret. Please re-enter your MS Graph Client Secret."
         )
 
     success, error = send_test_email(
         sender_email=client.lead_email,
-        sender_password=decrypted_pwd,
+        tenant_id=client.ms_tenant_id,
+        client_id=client.ms_client_id,
+        client_secret=decrypted_secret,
         company_name=client.company_name,
     )
 
     if success:
-        return {"status": "success", "message": "Test email sent successfully!"}
+        return {"status": "success", "message": "Test email sent successfully via MS Graph!"}
     else:
         raise HTTPException(status_code=400, detail=error or "Failed to send test email")
 
