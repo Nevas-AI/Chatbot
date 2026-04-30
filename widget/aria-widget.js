@@ -1423,7 +1423,7 @@
 
     console.log("[Neva] Booking form triggered, URL:", bookingUrl);
 
-    bookingCard.style.cssText = "background: var(--aria-bg); border: 1.5px solid var(--aria-primary); border-radius: 16px; padding: 0; margin: 8px 0; box-shadow: 0 8px 24px rgba(99, 102, 241, 0.12); animation: aria-msgSlide 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; overflow: hidden; transform-origin: center bottom;";
+    bookingCard.style.cssText = "background: var(--aria-bg); border: 1.5px solid var(--aria-primary); border-radius: 16px; padding: 0; margin: 8px 0; box-shadow: 0 8px 24px rgba(99, 102, 241, 0.12); animation: aria-msgSlide 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: center bottom;";
 
     bookingCard.innerHTML = `
       <div style="padding: 22px 20px 18px; text-align: center;">
