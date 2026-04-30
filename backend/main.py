@@ -146,40 +146,44 @@ async def load_all_client_pipelines():
 
 async def ensure_default_client() -> str:
     """Ensure a default client exists. Returns its ID as string."""
-    async with async_session() as db:
-        result = await db.execute(
-            select(Client).where(Client.slug == "default")
-        )
-        client = result.scalar_one_or_none()
-
-        if not client:
-            client = Client(
-                name=os.getenv("COMPANY_NAME", "Nevas Technologies"),
-                slug="default",
-                bot_name="Neva",
-                primary_color="#6366F1",
-                welcome_msg="Hi there! 👋 I'm Neva, your AI assistant. How can I help you today?",
-                company_name=os.getenv("COMPANY_NAME", "Nevas Technologies"),
-                support_email=os.getenv("SUPPORT_EMAIL", "info@nevastech.com"),
-                support_phone=os.getenv("SUPPORT_PHONE", "+91 0123456789"),
-                business_hours=os.getenv("BUSINESS_HOURS", "Mon-Sat 9AM-6PM IST"),
-                website_url=os.getenv("WEBSITE_URL", ""),
-                collection_name=os.getenv("CHROMA_COLLECTION_NAME", "aria_knowledge"),
+    try:
+        async with async_session() as db:
+            result = await db.execute(
+                select(Client).where(Client.slug == "default")
             )
-            db.add(client)
-            await db.commit()
-            await db.refresh(client)
-            logger.info(f"✅ Created default client: {client.name}")
+            client = result.scalar_one_or_none()
 
-        cid = str(client.id)
-        if cid not in client_pipelines:
-            config = _build_client_config(client)
-            client_configs[cid] = config
-            pipeline, handler = init_client_pipeline(config)
-            client_pipelines[cid] = pipeline
-            client_escalation_handlers[cid] = handler
+            if not client:
+                client = Client(
+                    name=os.getenv("COMPANY_NAME", "Nevas Technologies"),
+                    slug="default",
+                    bot_name="Neva",
+                    primary_color="#6366F1",
+                    welcome_msg="Hi there! 👋 I'm Neva, your AI assistant. How can I help you today?",
+                    company_name=os.getenv("COMPANY_NAME", "Nevas Technologies"),
+                    support_email=os.getenv("SUPPORT_EMAIL", "info@nevastech.com"),
+                    support_phone=os.getenv("SUPPORT_PHONE", "+91 0123456789"),
+                    business_hours=os.getenv("BUSINESS_HOURS", "Mon-Sat 9AM-6PM IST"),
+                    website_url=os.getenv("WEBSITE_URL", ""),
+                    collection_name=os.getenv("CHROMA_COLLECTION_NAME", "aria_knowledge"),
+                )
+                db.add(client)
+                await db.commit()
+                await db.refresh(client)
+                logger.info(f"✅ Created default client: {client.name}")
 
-        return cid
+            cid = str(client.id)
+            if cid not in client_pipelines:
+                config = _build_client_config(client)
+                client_configs[cid] = config
+                pipeline, handler = init_client_pipeline(config)
+                client_pipelines[cid] = pipeline
+                client_escalation_handlers[cid] = handler
+
+            return cid
+    except Exception as e:
+        logger.error(f"❌ Failed to ensure default client (DB schema might be outdated): {e}")
+        return ""
 
 
 async def get_client_id_by_slug(slug: str) -> Optional[str]:
