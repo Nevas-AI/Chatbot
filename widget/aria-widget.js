@@ -1506,13 +1506,20 @@
         );
 
         // Poll for popup close → show thank-you message
-        if (bookingPopup) {
-          var pollTimer = setInterval(function () {
-            if (bookingPopup.closed) {
-              clearInterval(pollTimer);
-              showBookingConfirmation();
-            }
-          }, 500);
+        // Wait 5s before polling so user has time to interact with the booking page
+        if (bookingPopup && !bookingPopup.closed) {
+          setTimeout(function () {
+            var pollTimer = setInterval(function () {
+              try {
+                if (!bookingPopup || bookingPopup.closed) {
+                  clearInterval(pollTimer);
+                  showBookingConfirmation();
+                }
+              } catch (e) {
+                clearInterval(pollTimer);
+              }
+            }, 1000);
+          }, 5000);
         }
       });
     }
