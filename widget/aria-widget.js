@@ -1195,12 +1195,14 @@
   }
 
   function formatMessage(text) {
-    // Strip internal lead markers before display
+    // Strip internal markers before display
     text = text.replace(/\[LEAD_NAME:[^\]]*\]/g, "");
     text = text.replace(/\[LEAD_EMAIL:[^\]]*\]/g, "");
     text = text.replace(/\[LEAD_PHONE:[^\]]*\]/g, "");
     text = text.replace(/\[LEAD_COMPANY:[^\]]*\]/g, "");
     text = text.replace(/\[LEAD_CONTEXT:[^\]]*\]/g, "");
+    text = text.replace(/\[SHOW_BOOKING_FORM\]/g, "");
+    text = text.replace(/\[SHOW_LEAD_FORM\]/g, "");
     text = text.trim();
 
     // Basic markdown-like formatting
@@ -1402,12 +1404,8 @@
   }
 
   // ─── Booking Form (Microsoft Bookings Embed) ───────────
-  var bookingFormShown = false; // prevent duplicate booking forms
 
   function showBookingForm() {
-    // Guard: only show once per conversation
-    if (bookingFormShown) return;
-    bookingFormShown = true;
 
     var messagesEl = document.getElementById("aria-messages");
     var bookingCard = document.createElement("div");
@@ -1415,7 +1413,6 @@
     var bookingUrl = CONFIG._bookingUrl || "";
     if (!bookingUrl) {
       addBotMessage("Demo booking is currently being set up. Please contact us directly to schedule.");
-      bookingFormShown = false;
       return;
     }
 
@@ -1481,11 +1478,8 @@
   }
 
   // ─── Booking Confirmation Message ──────────────────────
-  var bookingConfirmationShown = false;
 
   function showBookingConfirmation() {
-    if (bookingConfirmationShown) return;
-    bookingConfirmationShown = true;
 
     var messagesEl = document.getElementById("aria-messages");
     var confirmCard = document.createElement("div");
