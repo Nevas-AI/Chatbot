@@ -1499,13 +1499,49 @@
         var w = 700, h = 750;
         var left = (screen.width - w) / 2;
         var top = (screen.height - h) / 2;
-        window.open(
+        var bookingPopup = window.open(
           bookingUrl,
           "BookingWindow",
           "width=" + w + ",height=" + h + ",left=" + left + ",top=" + top + ",toolbar=no,menubar=no,scrollbars=yes,resizable=yes"
         );
+
+        // Poll for popup close → show thank-you message
+        if (bookingPopup) {
+          var pollTimer = setInterval(function () {
+            if (bookingPopup.closed) {
+              clearInterval(pollTimer);
+              showBookingConfirmation();
+            }
+          }, 500);
+        }
       });
     }
+  }
+
+  // ─── Booking Confirmation Message ──────────────────────
+  var bookingConfirmationShown = false;
+
+  function showBookingConfirmation() {
+    if (bookingConfirmationShown) return;
+    bookingConfirmationShown = true;
+
+    var messagesEl = document.getElementById("aria-messages");
+    var confirmCard = document.createElement("div");
+
+    confirmCard.style.cssText = "background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: 1.5px solid #86efac; border-radius: 16px; padding: 22px 20px; margin: 8px 0; box-shadow: 0 8px 24px rgba(34, 197, 94, 0.12); animation: aria-msgSlide 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); text-align: center;";
+
+    confirmCard.innerHTML = `
+      <div style="display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 50%; background: #22c55e; color: #ffffff; margin-bottom: 12px; box-shadow: 0 4px 14px rgba(34, 197, 94, 0.3);">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+      <h3 style="margin: 0 0 6px; font-size: 17px; font-weight: 700; color: #15803d; letter-spacing: -0.01em;">Thank You for Booking! 🎉</h3>
+      <p style="margin: 0; font-size: 13px; color: #166534; line-height: 1.5;">Your demo request has been received. You'll get a confirmation email shortly with all the details. We look forward to speaking with you!</p>
+    `;
+
+    messagesEl.appendChild(confirmCard);
+    scrollToBottom();
   }
 
   // ─── Typing Indicator ─────────────────────────────────
