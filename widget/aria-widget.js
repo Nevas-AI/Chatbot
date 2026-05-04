@@ -42,6 +42,8 @@
   let unreadCount = 0;
   let hasShownWelcome = false;
   let streamMsgCounter = 0;
+  let lastMessageTime = 0;
+  const MESSAGE_COOLDOWN_MS = 3000; // 3-second cooldown between messages
   let isDarkMode =
     window.matchMedia &&
     window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -1554,6 +1556,16 @@
     var text = input.value.trim();
     if (!text) return;
 
+    // Frontend cooldown: prevent rapid-fire messages
+    var now = Date.now();
+    var timeSinceLastMsg = now - lastMessageTime;
+    if (timeSinceLastMsg < MESSAGE_COOLDOWN_MS) {
+      var waitSec = Math.ceil((MESSAGE_COOLDOWN_MS - timeSinceLastMsg) / 1000);
+      addBotMessage("Please wait " + waitSec + " second" + (waitSec > 1 ? "s" : "") + " before sending another message. \u23f3");
+      return;
+    }
+    lastMessageTime = now;
+
     // Clear input and reset height
     input.value = "";
     input.style.height = "auto";
@@ -1684,6 +1696,12 @@
             } else if (data.type === "chat_closed") {
               addBotMessage(data.content);
               handleChatClosed();
+            } else if (data.type === "rate_limited") {
+              addBotMessage(data.content);
+              // Extend frontend cooldown based on server's retry_after
+              if (data.retry_after) {
+                lastMessageTime = Date.now() + ((data.retry_after - 3) * 1000);
+              }
             } else if (data.type === "error") {
               addBotMessage(data.content);
             }

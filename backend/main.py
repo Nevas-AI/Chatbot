@@ -15,9 +15,11 @@ import json
 import asyncio
 import logging
 import re as _re
+import time
 import threading
 from typing import Dict, List, Optional
 from datetime import datetime, timezone
+from collections import defaultdict
 from contextlib import asynccontextmanager
 
 from sqlalchemy import select
@@ -73,6 +75,36 @@ session_client_map: Dict[str, str] = {}
 
 # Max messages to keep per session
 MAX_HISTORY = 10
+
+# ─────────────────────────────────────────────
+# Per-session rate limiting
+# ─────────────────────────────────────────────
+# Tracks timestamps of recent messages per session: {session_id: [timestamp, ...]}
+session_rate_tracker: Dict[str, list] = {}
+
+# Rate limit config: max messages allowed within the window (seconds)
+RATE_LIMIT_MAX_MESSAGES = 10   # max 10 messages
+RATE_LIMIT_WINDOW_SECONDS = 60  # within 60 seconds
+
+
+def check_rate_limit(session_id: str) -> bool:
+    """Check if a session has exceeded the rate limit. Returns True if rate-limited."""
+    now = time.time()
+    if session_id not in session_rate_tracker:
+        session_rate_tracker[session_id] = []
+
+    # Clean old timestamps outside the window
+    session_rate_tracker[session_id] = [
+        ts for ts in session_rate_tracker[session_id]
+        if now - ts < RATE_LIMIT_WINDOW_SECONDS
+    ]
+
+    if len(session_rate_tracker[session_id]) >= RATE_LIMIT_MAX_MESSAGES:
+        return True  # Rate limited
+
+    # Record this message
+    session_rate_tracker[session_id].append(now)
+    return False
 
 
 # ─────────────────────────────────────────────
@@ -897,6 +929,35 @@ async def chat(request: ChatRequest, req: Request):
                 media_type="text/event-stream",
                 headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
             )
+
+    # ── Per-session rate limiting ──
+    if check_rate_limit(session_id):
+        remaining_wait = RATE_LIMIT_WINDOW_SECONDS
+        if session_id in session_rate_tracker and session_rate_tracker[session_id]:
+            oldest = session_rate_tracker[session_id][0]
+            remaining_wait = max(1, int(RATE_LIMIT_WINDOW_SECONDS - (time.time() - oldest)))
+
+        rate_limit_msg = (
+            f"You're sending messages a bit too quickly! 😅 "
+            f"Please wait about {remaining_wait} seconds before sending another message. "
+            f"I'm here to help — just need a brief moment to catch up!"
+        )
+
+        async def rate_limit_stream():
+            data = json.dumps({
+                "type": "rate_limited",
+                "content": rate_limit_msg,
+                "session_id": session_id,
+                "retry_after": remaining_wait,
+            })
+            yield f"data: {data}\n\n"
+            yield "data: [DONE]\n\n"
+
+        return StreamingResponse(
+            rate_limit_stream(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+        )
 
     # Direct escalation bypass via special command
     if request.message.strip() == "/connect_human_support_now":

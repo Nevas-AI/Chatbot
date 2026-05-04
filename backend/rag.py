@@ -11,6 +11,8 @@ config so multiple clients can have isolated knowledge bases.
 
 import os
 import json
+import time
+import random
 import logging
 import hashlib
 from typing import List, Dict, Optional, Generator
@@ -402,9 +404,33 @@ Do NOT provide references for Conversational messages, greetings, simple request
 
         logger.info(f"RAG pipeline initialized for '{self.collection_name}' with Gemini AI")
 
+    def _retry_with_backoff(self, func, *args, max_retries=3, **kwargs):
+        """Execute a function with exponential backoff on rate-limit (429) errors."""
+        for attempt in range(max_retries + 1):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                error_str = str(e).lower()
+                is_rate_limit = (
+                    "429" in error_str
+                    or "resource exhausted" in error_str
+                    or "rate limit" in error_str
+                    or "quota" in error_str
+                )
+                if is_rate_limit and attempt < max_retries:
+                    wait_time = (2 ** attempt) + random.uniform(0.5, 1.5)
+                    logger.warning(
+                        f"Gemini API rate limited (attempt {attempt + 1}/{max_retries + 1}). "
+                        f"Retrying in {wait_time:.1f}s..."
+                    )
+                    time.sleep(wait_time)
+                else:
+                    raise
+
     def _get_embedding(self, text: str) -> List[float]:
         """Get embedding vector for a text using Gemini Embedding API."""
-        result = genai.embed_content(
+        result = self._retry_with_backoff(
+            genai.embed_content,
             model=f"models/{self.embedding_model}",
             content=text,
             task_type="retrieval_document",
@@ -627,8 +653,11 @@ Do NOT provide references for Conversational messages, greetings, simple request
                 role = "user" if msg["role"] == "user" else "model"
                 gemini_history.append({"role": role, "parts": [msg["content"]]})
 
-            chat = model.start_chat(history=gemini_history)
-            response = chat.send_message(messages[-1]["content"])
+            def _do_chat():
+                chat = model.start_chat(history=gemini_history)
+                return chat.send_message(messages[-1]["content"])
+
+            response = self._retry_with_backoff(_do_chat)
             return response.text
         except Exception as e:
             logger.error(f"Error generating chat response: {str(e)}")
@@ -659,8 +688,34 @@ Do NOT provide references for Conversational messages, greetings, simple request
                 role = "user" if msg["role"] == "user" else "model"
                 gemini_history.append({"role": role, "parts": [msg["content"]]})
 
-            chat = model.start_chat(history=gemini_history)
-            response = chat.send_message(messages[-1]["content"], stream=True)
+            # Retry logic for stream initiation (rate-limit handling)
+            response = None
+            for attempt in range(4):  # max 3 retries
+                try:
+                    chat = model.start_chat(history=gemini_history)
+                    response = chat.send_message(messages[-1]["content"], stream=True)
+                    break
+                except Exception as retry_e:
+                    error_str = str(retry_e).lower()
+                    is_rate_limit = (
+                        "429" in error_str
+                        or "resource exhausted" in error_str
+                        or "rate limit" in error_str
+                        or "quota" in error_str
+                    )
+                    if is_rate_limit and attempt < 3:
+                        wait_time = (2 ** attempt) + random.uniform(0.5, 1.5)
+                        logger.warning(
+                            f"Gemini API rate limited on stream (attempt {attempt + 1}/4). "
+                            f"Retrying in {wait_time:.1f}s..."
+                        )
+                        time.sleep(wait_time)
+                    else:
+                        raise
+
+            if response is None:
+                raise RuntimeError("Failed to get streaming response after retries")
+
             yielded_any = False
             for chunk in response:
                 try:
@@ -671,13 +726,27 @@ Do NOT provide references for Conversational messages, greetings, simple request
                     logger.warning(f"Failed to extract text from chunk: {chunk_e}")
                     continue
         except Exception as e:
+            error_str = str(e).lower()
+            is_rate_limit = (
+                "429" in error_str
+                or "resource exhausted" in error_str
+                or "rate limit" in error_str
+                or "quota" in error_str
+            )
             logger.error(f"Error streaming chat response: {str(e)}")
             if "yielded_any" not in locals() or not yielded_any:
-                yield (
-                    "I'm sorry, I'm having trouble responding right now. "
-                    "Please try again in a moment, or contact our team directly at "
-                    f"{self.support_email} or {self.support_phone}."
-                )
+                if is_rate_limit:
+                    yield (
+                        "I'm receiving a lot of questions right now! 😅 "
+                        "Please wait a moment and try again. "
+                        "I'll be happy to help once things calm down."
+                    )
+                else:
+                    yield (
+                        "I'm sorry, I'm having trouble responding right now. "
+                        "Please try again in a moment, or contact our team directly at "
+                        f"{self.support_email} or {self.support_phone}."
+                    )
 
     def _build_messages(
         self,
